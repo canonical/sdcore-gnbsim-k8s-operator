@@ -1,0 +1,27 @@
+name: sdcore-gnbsim
+
+display-name: SD-CORE 5G GNBSIM
+summary: A Charmed Operator for SDCORE's GNBSIM component.
+description: |
+  A Charmed Operator for SDCORE's gNodeB simulator (GNBSIM) component.
+
+containers:
+  gnbsim:
+    resource: gnbsim-image
+    mounts:
+      - storage: config
+        location: /etc/gnbsim/
+
+resources:
+  gnbsim-image:
+    type: oci-image
+    description: OCI image for 5G gnbsim
+    upstream-source: omecproject/5gc-gnbsim:main-1caccfc
+
+storage:
+  config:
+    type: filesystem
+    minimum-size: 1M
+
+assumes:
+  - k8s-api
