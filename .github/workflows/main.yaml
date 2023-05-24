@@ -2,8 +2,6 @@ name: Main branch CI
 
 on:
   pull_request:
-    branches:
-      - main
   push:
     branches:
       - main
