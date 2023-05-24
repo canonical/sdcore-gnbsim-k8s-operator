@@ -1,9 +1,9 @@
 name: sdcore-gnbsim
 
-display-name: SD-CORE 5G GNBSIM
-summary: A Charmed Operator for SDCORE's GNBSIM component.
+display-name: SD-Core 5G GNBSIM
+summary: A Charmed Operator for SD-Core's GNBSIM component.
 description: |
-  A Charmed Operator for SDCORE's gNodeB simulator (GNBSIM) component.
+  A Charmed Operator for SD-Core's gNodeB simulator (GNBSIM) component.
 
 containers:
   gnbsim:

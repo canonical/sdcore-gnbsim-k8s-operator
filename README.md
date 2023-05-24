@@ -9,10 +9,10 @@
   </a>
   <br/>
   <br/>
-  <h1>SD-CORE AUSF Operator</h1>
+  <h1>SD-Core AUSF Operator</h1>
 </div>
 
-A Charmed Operator for SDCORE's gNodeB simulator (GNBSIM) component. 
+A Charmed Operator for SD-Core's gNodeB simulator (GNBSIM) component. 
 
 ## Usage
 
