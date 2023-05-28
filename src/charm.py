@@ -8,7 +8,7 @@ import json
 import logging
 from ipaddress import IPv4Address
 from subprocess import check_output
-from typing import Optional
+from typing import Optional, Tuple
 
 from charms.kubernetes_charm_libraries.v0.multus import (  # type: ignore[import]
     KubernetesMultusCharmLib,
@@ -25,7 +25,7 @@ from ops.charm import ActionEvent, CharmBase
 from ops.framework import EventBase
 from ops.main import main
 from ops.model import ActiveStatus, BlockedStatus, WaitingStatus
-from ops.pebble import ExecError
+from ops.pebble import ChangeError, ExecError
 
 logger = logging.getLogger(__name__)
 
@@ -86,17 +86,14 @@ class GNBSIMOperatorCharm(CharmBase):
             self.unit.status = WaitingStatus("Waiting for storage to be attached")
             event.defer()
             return
-        if not self._kubernetes_multus.multus_is_configured():
-            self.unit.status = WaitingStatus("Waiting for statefulset to be patched")
-            return
-        if not self._has_net_admin_capability():
-            self.unit.status = WaitingStatus("Waiting for pod to have NET_ADMIN capability")
+        if not self._kubernetes_multus.is_ready():
+            self.unit.status = WaitingStatus("Waiting for Multus to be ready")
             return
         content = self._render_config_file(
             amf_hostname=self._get_amf_hostname_from_config(),  # type: ignore[arg-type]
             amf_port=self._get_amf_port_from_config(),  # type: ignore[arg-type]
-            gnb_ip_address=self._get_gnb_ip_address_from_config(),  # type: ignore[arg-type]
-            http_server_ip=str(self._http_server_ip),
+            gnb_ip_address=self._get_gnb_ip_address_from_config().split("/")[0],  # type: ignore[arg-type, union-attr]  # noqa: E501
+            http_server_ip=str(self._http_server_ip_address),
             http_server_port=HTTP_SERVER_PORT,
             icmp_packet_destination=self._get_icmp_packet_destination_from_config(),  # type: ignore[arg-type]  # noqa: E501
             imsi=self._get_imsi_from_config(),  # type: ignore[arg-type]
@@ -116,6 +113,7 @@ class GNBSIMOperatorCharm(CharmBase):
         self.unit.status = ActiveStatus()
 
     def _on_start_simulation_action(self, event: ActionEvent) -> None:
+        """Runs gnbsim simulation leveraging configuration file."""
         if not self._container.can_connect():
             event.fail(message="Container is not ready")
             return
@@ -127,12 +125,20 @@ class GNBSIMOperatorCharm(CharmBase):
                 command=f"/gnbsim/bin/gnbsim --cfg {BASE_CONFIG_PATH}/{CONFIG_FILE_NAME}",
                 environment=self._environment_variables,
             )
-            if "Profile Status: PASS" in stderr:
-                event.set_results({"success": "true"})
-            else:
-                event.set_results({"success": "false"})
-        except ExecError:
-            event.fail(message="Failed to execute simulation")
+            if not stderr:
+                event.fail(message="No output in simulation")
+                return
+            logger.info("gnbsim simulation output:\n=====\n%s\n=====", stderr)
+            event.set_results(
+                {
+                    "success": "true" if "Profile Status: PASS" in stderr else "false",
+                    "info": "run juju debug-log to get more information.",
+                }
+            )
+        except ExecError as e:
+            event.fail(message=f"Failed to execute simulation: {str(e.stderr)}")
+        except ChangeError as e:
+            event.fail(message=f"Failed to execute simulation: {e.err}")
 
     def _network_annotations_from_config(self) -> list[NetworkAnnotation]:
         """Returns the list of network annotation to be added to the charm statefulset.
@@ -306,18 +312,6 @@ class GNBSIMOperatorCharm(CharmBase):
             invalid_configs.append("usim-sequence-number")
         return invalid_configs
 
-    def _has_net_admin_capability(self) -> bool:
-        """Returns whether net_admin capability was added.
-
-        Returns:
-            bool: Whether net_admin capability was added
-        """
-        try:
-            self._exec_command_in_workload(command="capsh --has-p=cap_net_admin")
-            return True
-        except ExecError:
-            return False
-
     def _create_upf_route(self) -> None:
         """Creates route to reach the UPF."""
         self._exec_command_in_workload(
@@ -325,7 +319,11 @@ class GNBSIMOperatorCharm(CharmBase):
         )
         logger.info("UPF route created")
 
-    def _exec_command_in_workload(self, command: str, environment: Optional[dict] = None) -> tuple:
+    def _exec_command_in_workload(
+        self,
+        command: str,
+        environment: Optional[dict] = None,
+    ) -> Tuple[Optional[str], Optional[str]]:
         """Executes command in workload container.
 
         Args:
@@ -343,11 +341,11 @@ class GNBSIMOperatorCharm(CharmBase):
     def _environment_variables(self) -> dict:
         return {
             "MEM_LIMIT": "1Gi",
-            "POD_IP": str(self._http_server_ip),
+            "POD_IP": str(self._http_server_ip_address),
         }
 
     @property
-    def _http_server_ip(self) -> Optional[IPv4Address]:
+    def _http_server_ip_address(self) -> Optional[IPv4Address]:
         return IPv4Address(check_output(["unit-get", "private-address"]).decode().strip())
 
 

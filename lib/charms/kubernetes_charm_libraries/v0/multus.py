@@ -76,6 +76,7 @@ from lightkube.models.core_v1 import (
 )
 from lightkube.models.meta_v1 import ObjectMeta
 from lightkube.resources.apps_v1 import StatefulSet
+from lightkube.resources.core_v1 import Pod
 from lightkube.types import PatchType
 from ops.charm import CharmBase, EventBase, RemoveEvent
 from ops.framework import Object
@@ -88,7 +89,7 @@ LIBAPI = 0
 
 # Increment this PATCH version before using `charmcraft publish-lib` or reset
 # to 0 if you are raising the major API version
-LIBPATCH = 1
+LIBPATCH = 2
 
 
 logger = logging.getLogger(__name__)
@@ -126,6 +127,44 @@ class KubernetesClient:
     def __init__(self, namespace: str):
         self.client = Client()
         self.namespace = namespace
+
+    def pod_is_ready(
+        self,
+        pod_name: str,
+        network_annotations: list[NetworkAnnotation],
+        containers_requiring_net_admin_capability: list[str],
+    ) -> bool:
+        """Returns whether pod has the requisite network annotation and NET_ADMIN capability.
+
+        Args:
+            pod_name: Pod name
+            network_annotations: List of network annotations
+            containers_requiring_net_admin_capability: List of containers requiring NET_ADMIN
+                capability
+
+        Returns:
+            bool: Whether pod is ready.
+        """
+        try:
+            pod = self.client.get(Pod, name=pod_name, namespace=self.namespace)
+        except ApiError:
+            raise KubernetesMultusError(f"Pod {pod_name} not found")
+        if "k8s.v1.cni.cncf.io/networks" not in pod.metadata.annotations:
+            return False
+        try:
+            if json.loads(pod.metadata.annotations["k8s.v1.cni.cncf.io/networks"]) != [
+                network_annotation.dict() for network_annotation in network_annotations
+            ]:
+                logger.info("Existing annotation are not identical to the expected ones")
+                return False
+        except JSONDecodeError:
+            logger.info("Existing annotations are not a valid json.")
+            return False
+        for container in pod.spec.containers:
+            if container.name in containers_requiring_net_admin_capability:
+                if "NET_ADMIN" not in container.securityContext.capabilities.add:
+                    return False
+        return True
 
     def network_attachment_definition_is_created(self, name: str) -> bool:
         """Returns whether a NetworkAttachmentDefinition is created.
@@ -349,37 +388,62 @@ class KubernetesMultusCharmLib(Object):
                 self.kubernetes.create_network_attachment_definition(
                     network_attachment_definition=network_attachment_definition
                 )
-        network_annotations = self.network_annotations_func()
-        if not self.kubernetes.statefulset_is_patched(
-            name=self.model.app.name,
-            network_annotations=network_annotations,
-            containers_requiring_net_admin_capability=self.containers_requiring_net_admin_capability,  # noqa: E501
-        ):
+        if not self._statefulset_is_patched():
             self.kubernetes.patch_statefulset(
                 name=self.model.app.name,
-                network_annotations=network_annotations,
+                network_annotations=self.network_annotations_func(),
                 containers_requiring_net_admin_capability=self.containers_requiring_net_admin_capability,  # noqa: E501
             )
 
-    def multus_is_configured(self) -> bool:
-        """Returns whether multus is configured.
-
-        Returns:
-            bool: Whether multus is configured
-        """
+    def _network_attachment_definitions_are_created(self) -> bool:
+        """Returns whether all network attachment definitions are created."""
         for network_attachment_definition in self.network_attachment_definitions:
             if not self.kubernetes.network_attachment_definition_is_created(
                 name=network_attachment_definition.metadata.name  # type: ignore[union-attr]
             ):
                 return False
-        network_annotations = self.network_annotations_func()
-        if not self.kubernetes.statefulset_is_patched(
-            name=self.model.app.name,
-            network_annotations=network_annotations,
-            containers_requiring_net_admin_capability=self.containers_requiring_net_admin_capability,  # noqa: E501
-        ):
-            return False
         return True
+
+    def _statefulset_is_patched(self) -> bool:
+        """Returns whether statefuset is patched with network annotations and capabilities."""
+        return self.kubernetes.statefulset_is_patched(
+            name=self.model.app.name,
+            network_annotations=self.network_annotations_func(),
+            containers_requiring_net_admin_capability=self.containers_requiring_net_admin_capability,  # noqa: E501
+        )
+
+    def _pod_is_ready(self) -> bool:
+        """Returns whether pod is ready with network annotations and capabilities."""
+        return self.kubernetes.pod_is_ready(
+            containers_requiring_net_admin_capability=self.containers_requiring_net_admin_capability,  # noqa: E501
+            pod_name=self._pod,
+            network_annotations=self.network_annotations_func(),
+        )
+
+    def is_ready(self) -> bool:
+        """Returns whether Multus is ready.
+
+        Validates that the network attachment definitions are created, that the statefulset is
+        patched with the appropriate Multus annotations and capabilities and that the pod
+        also contains the same annotations and capabilities.
+
+        Returns:
+            bool: Whether Multus is ready
+        """
+        return (
+            self._network_attachment_definitions_are_created()
+            and self._statefulset_is_patched()  # noqa: W503
+            and self._pod_is_ready()  # noqa: W503
+        )
+
+    @property
+    def _pod(self) -> str:
+        """Name of the unit's pod.
+
+        Returns:
+            str: A string containing the name of the current unit's pod.
+        """
+        return "-".join(self.model.unit.name.rsplit("/", 1))
 
     def _on_remove(self, event: RemoveEvent) -> None:
         """Deletes network attachment definitions.

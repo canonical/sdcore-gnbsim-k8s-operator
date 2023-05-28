@@ -18,6 +18,7 @@ A Charmed Operator for SD-Core's gNodeB simulator (GNBSIM) component.
 
 ```bash
 juju deploy sdcore-gnbsim --trust --channel=edge
+juju run sdcore-gnbsim/leader start-simulation
 ```
 
 ## Image
