@@ -1,0 +1,60 @@
+configuration:
+  execInParallel: false
+  gnbs:
+    gnb1:
+      defaultAmf:
+        hostName: {{ amf_hostname }}
+        port: {{ amf_port }}
+      globalRanId:
+        gNbId:
+          bitLength: 24
+          gNBValue: "000102"
+        plmnId:
+          mcc: {{ mcc }}
+          mnc: {{ mnc }}
+      n2Port: 9487
+      n3IpAddr: {{ gnb_ip_address }}
+      n3Port: 2152
+      name: gnb1
+      supportedTaList:
+      - broadcastPlmnList:
+        - plmnId:
+            mcc: {{ mcc }}
+            mnc: {{ mnc }}
+          taiSliceSupportList:
+          - sd: "{{ sd }}"
+            sst: {{ sst }}
+        tac: "{{ tac }}"
+  goProfile:
+    enable: false
+    port: 5000
+  httpServer:
+    enable: true
+    ipAddr: {{ http_server_ip }}
+    port: {{ http_server_port }}
+  networkTopo:
+  - upfAddr: {{ upf_ip_address }}
+    upfGw: {{ upf_gateway }}
+  profiles:
+  - dataPktCount: 5
+    defaultAs: {{ icmp_packet_destination }}
+    enable: true
+    execInParallel: false
+    gnbName: gnb1
+    key: {{ usim_key }}
+    opc: {{ usim_opc }}
+    perUserTimeout: 100
+    plmnId:
+      mcc: {{ mcc }}
+      mnc: {{ mnc }}
+    profileName: profile1
+    profileType: pdusessest
+    sequenceNumber: {{ usim_sequence_number }}
+    startImsi: {{ imsi }}
+    ueCount: 1
+  runConfigProfilesAtStart: true
+info:
+  description: gNodeB sim initial configuration
+  version: 1.0.0
+logger:
+  logLevel: trace
