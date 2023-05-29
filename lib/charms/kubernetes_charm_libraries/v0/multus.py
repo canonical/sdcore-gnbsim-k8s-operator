@@ -149,10 +149,10 @@ class KubernetesClient:
             pod = self.client.get(Pod, name=pod_name, namespace=self.namespace)
         except ApiError:
             raise KubernetesMultusError(f"Pod {pod_name} not found")
-        if "k8s.v1.cni.cncf.io/networks" not in pod.metadata.annotations:
+        if "k8s.v1.cni.cncf.io/networks" not in pod.metadata.annotations:  # type: ignore[attr-defined]  # noqa: E501
             return False
         try:
-            if json.loads(pod.metadata.annotations["k8s.v1.cni.cncf.io/networks"]) != [
+            if json.loads(pod.metadata.annotations["k8s.v1.cni.cncf.io/networks"]) != [  # type: ignore[attr-defined]  # noqa: E501
                 network_annotation.dict() for network_annotation in network_annotations
             ]:
                 logger.info("Existing annotation are not identical to the expected ones")
@@ -160,7 +160,7 @@ class KubernetesClient:
         except JSONDecodeError:
             logger.info("Existing annotations are not a valid json.")
             return False
-        for container in pod.spec.containers:
+        for container in pod.spec.containers:  # type: ignore[attr-defined]
             if container.name in containers_requiring_net_admin_capability:
                 if "NET_ADMIN" not in container.securityContext.capabilities.add:
                     return False
