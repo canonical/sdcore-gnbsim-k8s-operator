@@ -131,6 +131,7 @@ class KubernetesClient:
     def pod_is_ready(
         self,
         pod_name: str,
+        *,
         network_annotations: list[NetworkAnnotation],
         containers_requiring_net_admin_capability: list[str],
     ) -> bool:

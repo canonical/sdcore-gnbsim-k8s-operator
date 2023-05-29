@@ -88,6 +88,7 @@ class GNBSIMOperatorCharm(CharmBase):
             return
         if not self._kubernetes_multus.is_ready():
             self.unit.status = WaitingStatus("Waiting for Multus to be ready")
+            event.defer()
             return
         content = self._render_config_file(
             amf_hostname=self._get_amf_hostname_from_config(),  # type: ignore[arg-type]
