@@ -82,6 +82,10 @@ class GNBSIMOperatorCharm(CharmBase):
             self.unit.status = WaitingStatus("Waiting for container to be ready")
             event.defer()
             return
+        if not self._http_server_ip_address:
+            self.unit.status = WaitingStatus("Waiting for IP address to be available")
+            event.defer()
+            return
         if not self._container.exists(path=BASE_CONFIG_PATH):
             self.unit.status = WaitingStatus("Waiting for storage to be attached")
             event.defer()
@@ -347,7 +351,8 @@ class GNBSIMOperatorCharm(CharmBase):
 
     @property
     def _http_server_ip_address(self) -> Optional[IPv4Address]:
-        return IPv4Address(check_output(["unit-get", "private-address"]).decode().strip())
+        ip_address = check_output(["unit-get", "private-address"])
+        return IPv4Address(ip_address.decode().strip()) if ip_address else None
 
 
 if __name__ == "__main__":  # pragma: nocover

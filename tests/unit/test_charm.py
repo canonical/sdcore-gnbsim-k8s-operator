@@ -62,11 +62,14 @@ class TestCharm(unittest.TestCase):
             WaitingStatus("Waiting for container to be ready"),
         )
 
+    @patch("charm.check_output")
     @patch("ops.model.Container.exists")
     def test_given_storage_not_attached_when_config_changed_then_status_is_waiting(
         self,
         patch_exists,
+        patch_check_output,
     ):
+        patch_check_output.return_value = b"1.2.3.4"
         patch_exists.return_value = False
         self.harness.set_can_connect(container="gnbsim", val=True)
 
@@ -78,12 +81,15 @@ class TestCharm(unittest.TestCase):
         )
 
     @patch(f"{MULTUS_LIB_PATH}.KubernetesMultusCharmLib.is_ready")
+    @patch("charm.check_output")
     @patch("ops.model.Container.exists")
     def test_given_multus_not_ready_when_config_changed_then_status_is_waiting(
         self,
         patch_exists,
+        patch_check_output,
         patch_is_ready,
     ):
+        patch_check_output.return_value = b"1.2.3.4"
         patch_exists.return_value = True
         patch_is_ready.return_value = False
         self.harness.set_can_connect(container="gnbsim", val=True)
@@ -138,6 +144,28 @@ class TestCharm(unittest.TestCase):
         self.harness.update_config(key_values={})
 
         self.assertEqual(self.harness.charm.unit.status, ActiveStatus())
+
+    @patch("ops.model.Container.push", new=Mock)
+    @patch("charm.check_output")
+    @patch(f"{MULTUS_LIB_PATH}.KubernetesMultusCharmLib.is_ready")
+    @patch("ops.model.Container.exec", new=Mock)
+    @patch("ops.model.Container.exists")
+    def test_given_empty_ip_address_when_config_changed_then_status_is_waiting(
+        self,
+        patch_dir_exists,
+        patch_is_ready,
+        patch_check_output,
+    ):
+        patch_check_output.return_value = b""
+        patch_is_ready.return_value = True
+        patch_dir_exists.return_value = True
+        self.harness.set_can_connect(container="gnbsim", val=True)
+
+        self.harness.update_config(key_values={})
+
+        self.assertEqual(
+            self.harness.charm.unit.status, WaitingStatus("Waiting for IP address to be available")
+        )
 
     @patch("ops.model.Container.push", new=Mock)
     @patch("charm.check_output")
