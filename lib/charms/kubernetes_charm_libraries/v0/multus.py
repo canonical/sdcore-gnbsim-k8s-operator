@@ -151,16 +151,15 @@ class KubernetesClient:
         except ApiError:
             raise KubernetesMultusError(f"Pod {pod_name} not found")
         if "k8s.v1.cni.cncf.io/networks" not in pod.metadata.annotations:  # type: ignore[attr-defined]  # noqa: E501
-            logger.warning("`k8s.v1.cni.cncf.io/networks` not in pod annotation")
             return False
         try:
             if json.loads(pod.metadata.annotations["k8s.v1.cni.cncf.io/networks"]) != [  # type: ignore[attr-defined]  # noqa: E501
                 network_annotation.dict() for network_annotation in network_annotations
             ]:
-                logger.warning("Existing annotation are not identical to the expected ones")
+                logger.info("Existing annotation are not identical to the expected ones")
                 return False
         except JSONDecodeError:
-            logger.warning("Existing annotations are not a valid json.")
+            logger.info("Existing annotations are not a valid json.")
             return False
         for container in pod.spec.containers:  # type: ignore[attr-defined]
             if container.name in containers_requiring_net_admin_capability:
@@ -416,13 +415,11 @@ class KubernetesMultusCharmLib(Object):
 
     def _pod_is_ready(self) -> bool:
         """Returns whether pod is ready with network annotations and capabilities."""
-        pod_is_ready = self.kubernetes.pod_is_ready(
+        return self.kubernetes.pod_is_ready(
             containers_requiring_net_admin_capability=self.containers_requiring_net_admin_capability,  # noqa: E501
             pod_name=self._pod,
             network_annotations=self.network_annotations_func(),
         )
-        logger.warning("Pod is ready: %s", pod_is_ready)
-        return pod_is_ready
 
     def is_ready(self) -> bool:
         """Returns whether Multus is ready.
@@ -434,13 +431,11 @@ class KubernetesMultusCharmLib(Object):
         Returns:
             bool: Whether Multus is ready
         """
-        is_ready = (
+        return (
             self._network_attachment_definitions_are_created()
             and self._statefulset_is_patched()  # noqa: W503
             and self._pod_is_ready()  # noqa: W503
         )
-        logger.warning("Is ready: %s", is_ready)
-        return is_ready
 
     @property
     def _pod(self) -> str:
