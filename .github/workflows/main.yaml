@@ -19,7 +19,7 @@ jobs:
     uses: canonical/sdcore-github-workflows/.github/workflows/unit-test.yaml@main
 
   integration-test:
-    uses: canonical/sdcore-github-workflows/.github/workflows/integration-test.yaml@main
+    uses: canonical/sdcore-github-workflows/.github/workflows/integration-test-with-multus.yaml@main
     with:
       charm-file-name: "sdcore-gnbsim_ubuntu-22.04-amd64.charm"
 
