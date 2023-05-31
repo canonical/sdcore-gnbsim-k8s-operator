@@ -2,22 +2,26 @@ name: Main branch CI
 
 on:
   pull_request:
+    branches:
+      - main
   push:
     branches:
       - main
 
 jobs:
   lint-report:
-    uses: ./.github/workflows/lint-report.yaml
+    uses: canonical/sdcore-github-workflows/.github/workflows/lint-report.yaml@main
 
   static-analysis:
-    uses: ./.github/workflows/static-analysis.yaml
+    uses: canonical/sdcore-github-workflows/.github/workflows/static-analysis.yaml@main
 
   unit-tests-with-coverage:
-    uses: ./.github/workflows/unit-test.yaml
+    uses: canonical/sdcore-github-workflows/.github/workflows/unit-test.yaml@main
 
   integration-test:
-    uses: ./.github/workflows/integration-test.yaml
+    uses: canonical/sdcore-github-workflows/.github/workflows/integration-test-with-multus.yaml@main
+    with:
+      charm-file-name: "sdcore-gnbsim_ubuntu-22.04-amd64.charm"
 
   publish-charm:
     name: Publish Charm
@@ -27,6 +31,7 @@ jobs:
       - unit-tests-with-coverage
       - integration-test
     if: ${{ github.ref_name == 'main' }}
-    uses: ./.github/workflows/publish-charm.yaml
-    secrets:
-      CHARMCRAFT_AUTH: ${{ secrets.CHARMCRAFT_AUTH }}
+    uses: canonical/sdcore-github-workflows/.github/workflows/publish-charm.yaml@main
+    with:
+      charm-file-name: "sdcore-gnbsim_ubuntu-22.04-amd64.charm"
+    secrets: inherit
