@@ -6,8 +6,6 @@
 
 import json
 import logging
-from ipaddress import IPv4Address
-from subprocess import check_output
 from typing import Optional, Tuple
 
 from charms.kubernetes_charm_libraries.v0.multus import (  # type: ignore[import]
@@ -68,10 +66,11 @@ class GNBSIMOperatorCharm(CharmBase):
             network_annotations_func=self._network_annotations_from_config,
         )
 
-        self.framework.observe(self.on.config_changed, self._on_config_changed)
+        self.framework.observe(self.on.config_changed, self._configure)
+        self.framework.observe(self.on.gnbsim_pebble_ready, self._configure)
         self.framework.observe(self.on.start_simulation_action, self._on_start_simulation_action)
 
-    def _on_config_changed(self, event: EventBase) -> None:
+    def _configure(self, event: EventBase) -> None:
         """Handle the config changed event."""
         if invalid_configs := self._get_invalid_configs():
             self.unit.status = BlockedStatus(f"Configurations are invalid: {invalid_configs}")
@@ -326,10 +325,6 @@ class GNBSIMOperatorCharm(CharmBase):
             environment=environment,
         )
         return process.wait_output()
-
-    @property
-    def _unit_ip_address(self) -> Optional[IPv4Address]:
-        return IPv4Address(check_output(["unit-get", "private-address"]).decode().strip())
 
 
 if __name__ == "__main__":  # pragma: nocover
