@@ -120,7 +120,6 @@ class GNBSIMOperatorCharm(CharmBase):
         try:
             stdout, stderr = self._exec_command_in_workload(
                 command=f"/gnbsim/bin/gnbsim --cfg {BASE_CONFIG_PATH}/{CONFIG_FILE_NAME}",
-                environment=self._environment_variables,
             )
             if not stderr:
                 event.fail(message="No output in simulation")
@@ -327,13 +326,6 @@ class GNBSIMOperatorCharm(CharmBase):
             environment=environment,
         )
         return process.wait_output()
-
-    @property
-    def _environment_variables(self) -> dict:
-        return {
-            "MEM_LIMIT": "1Gi",
-            "POD_IP": str(self._unit_ip_address),
-        }
 
     @property
     def _unit_ip_address(self) -> Optional[IPv4Address]:
