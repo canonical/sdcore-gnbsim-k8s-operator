@@ -96,7 +96,6 @@ class TestCharm(unittest.TestCase):
         )
 
     @patch("ops.model.Container.push")
-    @patch("charm.check_output")
     @patch(f"{MULTUS_LIB_PATH}.KubernetesMultusCharmLib.is_ready")
     @patch("ops.model.Container.exec", new=Mock)
     @patch("ops.model.Container.exists")
@@ -104,10 +103,8 @@ class TestCharm(unittest.TestCase):
         self,
         patch_dir_exists,
         patch_is_ready,
-        patch_check_output,
         patch_push,
     ):
-        patch_check_output.return_value = b"1.2.3.4"
         patch_is_ready.return_value = True
         patch_dir_exists.return_value = True
         self.harness.set_can_connect(container="gnbsim", val=True)
@@ -120,7 +117,6 @@ class TestCharm(unittest.TestCase):
         )
 
     @patch("ops.model.Container.push", new=Mock)
-    @patch("charm.check_output")
     @patch(f"{MULTUS_LIB_PATH}.KubernetesMultusCharmLib.is_ready")
     @patch("ops.model.Container.exec", new=Mock)
     @patch("ops.model.Container.exists")
@@ -128,9 +124,7 @@ class TestCharm(unittest.TestCase):
         self,
         patch_dir_exists,
         patch_is_ready,
-        patch_check_output,
     ):
-        patch_check_output.return_value = b"1.2.3.4"
         patch_is_ready.return_value = True
         patch_dir_exists.return_value = True
         self.harness.set_can_connect(container="gnbsim", val=True)
@@ -140,7 +134,6 @@ class TestCharm(unittest.TestCase):
         self.assertEqual(self.harness.charm.unit.status, ActiveStatus())
 
     @patch("ops.model.Container.push", new=Mock)
-    @patch("charm.check_output")
     @patch(f"{MULTUS_LIB_PATH}.KubernetesMultusCharmLib.is_ready")
     @patch("ops.model.Container.exec")
     @patch("ops.model.Container.exists")
@@ -149,11 +142,9 @@ class TestCharm(unittest.TestCase):
         patch_dir_exists,
         patch_exec,
         patch_is_ready,
-        patch_check_output,
     ):
         upf_ip_address = "1.1.1.1"
         upf_gateway = "2.2.2.2"
-        patch_check_output.return_value = b"1.2.3.4"
         patch_is_ready.return_value = True
         patch_dir_exists.return_value = True
         self.harness.set_can_connect(container="gnbsim", val=True)
@@ -192,14 +183,12 @@ class TestCharm(unittest.TestCase):
 
         event.fail.assert_called_with(message="Config file is not written")
 
-    @patch("charm.check_output")
     @patch("ops.model.Container.exec")
     @patch("ops.model.Container.exists")
     def test_given_simulation_command_fails_with_execerror_when_start_simulation_action_then_event_fails(  # noqa: E501
-        self, patch_exists, patch_exec, patch_check_output
+        self, patch_exists, patch_exec
     ):
         stderr = "whatever stderr content"
-        patch_check_output.return_value = b"1.2.3.4"
         event = Mock()
         patch_exists.return_value = True
         patch_exec.side_effect = ExecError(command=[""], exit_code=1, stderr=stderr, stdout="")
@@ -209,14 +198,12 @@ class TestCharm(unittest.TestCase):
 
         event.fail.assert_called_with(message=f"Failed to execute simulation: {stderr}")
 
-    @patch("charm.check_output")
     @patch("ops.model.Container.exec")
     @patch("ops.model.Container.exists")
     def test_given_simulation_command_fails_with_changeerror_when_start_simulation_action_then_event_fails(  # noqa: E501
-        self, patch_exists, patch_exec, patch_check_output
+        self, patch_exists, patch_exec
     ):
         error = "whatever error content"
-        patch_check_output.return_value = b"1.2.3.4"
         event = Mock()
         patch_exists.return_value = True
         patch_exec.side_effect = ChangeError(err=error, change=None)
@@ -226,13 +213,11 @@ class TestCharm(unittest.TestCase):
 
         event.fail.assert_called_with(message=f"Failed to execute simulation: {error}")
 
-    @patch("charm.check_output")
     @patch("ops.model.Container.exec")
     @patch("ops.model.Container.exists")
     def test_given_no_stderr_when_start_simulation_action_then_event_fails(
-        self, patch_exists, patch_exec, patch_check_output
+        self, patch_exists, patch_exec
     ):
-        patch_check_output.return_value = b"1.2.3.4"
         event = Mock()
         patch_exists.return_value = True
         patch_process = Mock()
@@ -244,13 +229,11 @@ class TestCharm(unittest.TestCase):
 
         event.fail.assert_called_with(message="No output in simulation")
 
-    @patch("charm.check_output")
     @patch("ops.model.Container.exec")
     @patch("ops.model.Container.exists")
     def test_given_simulation_fails_when_start_simulation_action_then_simulation_result_is_false(
-        self, patch_exists, patch_exec, patch_check_output
+        self, patch_exists, patch_exec
     ):
-        patch_check_output.return_value = b"1.2.3.4"
         event = Mock()
         patch_exists.return_value = True
         patch_process = Mock()
@@ -264,13 +247,11 @@ class TestCharm(unittest.TestCase):
             {"success": "false", "info": "run juju debug-log to get more information."}
         )
 
-    @patch("charm.check_output")
     @patch("ops.model.Container.exec")
     @patch("ops.model.Container.exists")
     def test_given_simulation_succeeds_swhen_start_simulation_action_then_simulation_result_is_true(  # noqa: E501
-        self, patch_exists, patch_exec, patch_check_output
+        self, patch_exists, patch_exec
     ):
-        patch_check_output.return_value = b"1.2.3.4"
         event = Mock()
         patch_exists.return_value = True
         patch_process = Mock()
