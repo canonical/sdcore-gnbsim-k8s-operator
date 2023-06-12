@@ -71,7 +71,10 @@ class GNBSIMOperatorCharm(CharmBase):
         self.framework.observe(self.on.start_simulation_action, self._on_start_simulation_action)
 
     def _configure(self, event: EventBase) -> None:
-        """Handle the config changed event."""
+        """Juju event handler.
+
+        Sets unit status, writes gnbsim configuration file and sets ip route.
+        """
         if invalid_configs := self._get_invalid_configs():
             self.unit.status = BlockedStatus(f"Configurations are invalid: {invalid_configs}")
             return
