@@ -23,5 +23,9 @@ storage:
     type: filesystem
     minimum-size: 1M
 
+requires:
+  fiveg-n2:
+    interface: fiveg_n2
+
 assumes:
   - k8s-api

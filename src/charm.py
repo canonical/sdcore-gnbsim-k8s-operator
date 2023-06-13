@@ -18,6 +18,7 @@ from charms.kubernetes_charm_libraries.v0.multus import (  # type: ignore[import
 from charms.observability_libs.v1.kubernetes_service_patch import (  # type: ignore[import]
     KubernetesServicePatch,
 )
+from charms.sdcore_amf.v0.fiveg_n2 import N2Requires  # type: ignore[import]
 from jinja2 import Environment, FileSystemLoader
 from lightkube.models.core_v1 import ServicePort
 from lightkube.models.meta_v1 import ObjectMeta
@@ -33,6 +34,7 @@ BASE_CONFIG_PATH = "/etc/gnbsim"
 CONFIG_FILE_NAME = "gnb.conf"
 NETWORK_ATTACHMENT_DEFINITION_NAME = "gnb-net"
 HTTP_SERVER_PORT = 6000
+N2_RELATION_NAME = "fiveg-n2"
 
 
 class GNBSIMOperatorCharm(CharmBase):
@@ -42,6 +44,7 @@ class GNBSIMOperatorCharm(CharmBase):
         super().__init__(*args)
         self._container_name = self._service_name = "gnbsim"
         self._container = self.unit.get_container(self._container_name)
+        self._n2_requirer = N2Requires(self, N2_RELATION_NAME)
         self._service_patcher = KubernetesServicePatch(
             charm=self,
             ports=[
@@ -70,10 +73,11 @@ class GNBSIMOperatorCharm(CharmBase):
             network_annotations_func=self._network_annotations_from_config,
         )
 
-        self.framework.observe(self.on.config_changed, self._on_config_changed)
+        self.framework.observe(self.on.config_changed, self._configure)
         self.framework.observe(self.on.start_simulation_action, self._on_start_simulation_action)
+        self.framework.observe(self._n2_requirer.on.n2_information_available, self._configure)
 
-    def _on_config_changed(self, event: EventBase) -> None:
+    def _configure(self, event: EventBase) -> None:
         """Handle the config changed event."""
         if invalid_configs := self._get_invalid_configs():
             self.unit.status = BlockedStatus(f"Configurations are invalid: {invalid_configs}")
@@ -90,9 +94,13 @@ class GNBSIMOperatorCharm(CharmBase):
             self.unit.status = WaitingStatus("Waiting for Multus to be ready")
             event.defer()
             return
+        if not self._n2_requirer.amf_hostname or not self._n2_requirer.amf_port:
+            self.unit.status = WaitingStatus("Waiting for N2 information")
+            event.defer()
+            return
         content = self._render_config_file(
-            amf_hostname=self._get_amf_hostname_from_config(),  # type: ignore[arg-type]
-            amf_port=self._get_amf_port_from_config(),  # type: ignore[arg-type]
+            amf_hostname=self._n2_requirer.amf_hostname,  # type: ignore[arg-type]
+            amf_port=self._n2_requirer.amf_port,  # type: ignore[arg-type]
             gnb_ip_address=self._get_gnb_ip_address_from_config().split("/")[0],  # type: ignore[arg-type, union-attr]  # noqa: E501
             http_server_ip=str(self._http_server_ip_address),
             http_server_port=HTTP_SERVER_PORT,
@@ -156,12 +164,6 @@ class GNBSIMOperatorCharm(CharmBase):
                 ips=[self._get_gnb_ip_address_from_config()],
             )
         ]
-
-    def _get_amf_hostname_from_config(self) -> Optional[str]:
-        return self.model.config.get("amf-hostname")
-
-    def _get_amf_port_from_config(self) -> Optional[int]:
-        return int(self.model.config.get("amf-port"))  # type: ignore[arg-type]
 
     def _get_gnb_ip_address_from_config(self) -> Optional[str]:
         return self.model.config.get("gnb-ip-address")
@@ -281,10 +283,6 @@ class GNBSIMOperatorCharm(CharmBase):
     def _get_invalid_configs(self) -> list[str]:  # noqa: C901
         """Gets list of invalid Juju configurations."""
         invalid_configs = []
-        if not self._get_amf_hostname_from_config():
-            invalid_configs.append("amf-hostname")
-        if not self._get_amf_port_from_config():
-            invalid_configs.append("amf-port")
         if not self._get_gnb_ip_address_from_config():
             invalid_configs.append("gnb-ip-address")
         if not self._get_icmp_packet_destination_from_config():

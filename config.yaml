@@ -1,12 +1,4 @@
 options:
-  amf-hostname:
-    type: string
-    default: "amf"
-    description: AMF hostname
-  amf-port:
-    type: int
-    default: 38412
-    description: AMF port
   gnb-ip-address:
     type: string
     default: "192.168.251.5/24"
