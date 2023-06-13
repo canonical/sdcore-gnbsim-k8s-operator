@@ -6,8 +6,6 @@
 
 import json
 import logging
-from ipaddress import IPv4Address
-from subprocess import check_output
 from typing import Optional, Tuple
 
 from charms.kubernetes_charm_libraries.v0.multus import (  # type: ignore[import]
@@ -33,7 +31,6 @@ logger = logging.getLogger(__name__)
 BASE_CONFIG_PATH = "/etc/gnbsim"
 CONFIG_FILE_NAME = "gnb.conf"
 NETWORK_ATTACHMENT_DEFINITION_NAME = "gnb-net"
-HTTP_SERVER_PORT = 6000
 N2_RELATION_NAME = "fiveg-n2"
 
 
@@ -49,7 +46,6 @@ class GNBSIMOperatorCharm(CharmBase):
             charm=self,
             ports=[
                 ServicePort(name="ngapp", port=38412, protocol="SCTP"),
-                ServicePort(name="http-api", port=HTTP_SERVER_PORT),
             ],
         )
         network_attachment_definition_spec = {
@@ -74,11 +70,15 @@ class GNBSIMOperatorCharm(CharmBase):
         )
 
         self.framework.observe(self.on.config_changed, self._configure)
+        self.framework.observe(self.on.gnbsim_pebble_ready, self._configure)
         self.framework.observe(self.on.start_simulation_action, self._on_start_simulation_action)
         self.framework.observe(self._n2_requirer.on.n2_information_available, self._configure)
 
     def _configure(self, event: EventBase) -> None:
-        """Handle the config changed event."""
+        """Juju event handler.
+
+        Sets unit status, writes gnbsim configuration file and sets ip route.
+        """
         if invalid_configs := self._get_invalid_configs():
             self.unit.status = BlockedStatus(f"Configurations are invalid: {invalid_configs}")
             return
@@ -102,8 +102,6 @@ class GNBSIMOperatorCharm(CharmBase):
             amf_hostname=self._n2_requirer.amf_hostname,  # type: ignore[arg-type]
             amf_port=self._n2_requirer.amf_port,  # type: ignore[arg-type]
             gnb_ip_address=self._get_gnb_ip_address_from_config().split("/")[0],  # type: ignore[arg-type, union-attr]  # noqa: E501
-            http_server_ip=str(self._http_server_ip_address),
-            http_server_port=HTTP_SERVER_PORT,
             icmp_packet_destination=self._get_icmp_packet_destination_from_config(),  # type: ignore[arg-type]  # noqa: E501
             imsi=self._get_imsi_from_config(),  # type: ignore[arg-type]
             mcc=self._get_mcc_from_config(),  # type: ignore[arg-type]
@@ -132,7 +130,6 @@ class GNBSIMOperatorCharm(CharmBase):
         try:
             stdout, stderr = self._exec_command_in_workload(
                 command=f"/gnbsim/bin/gnbsim --cfg {BASE_CONFIG_PATH}/{CONFIG_FILE_NAME}",
-                environment=self._environment_variables,
             )
             if not stderr:
                 event.fail(message="No output in simulation")
@@ -219,8 +216,6 @@ class GNBSIMOperatorCharm(CharmBase):
         amf_hostname: str,
         amf_port: int,
         gnb_ip_address: str,
-        http_server_ip: str,
-        http_server_port: int,
         icmp_packet_destination: str,
         imsi: str,
         mcc: str,
@@ -240,8 +235,6 @@ class GNBSIMOperatorCharm(CharmBase):
             amf_hostname: AMF hostname
             amf_port: AMF port
             gnb_ip_address: gNodeB IP address
-            http_server_ip: HTTP server IP address
-            http_server_port: HTTP server port
             icmp_packet_destination: Default ICMP packet destination
             imsi: International Mobile Subscriber Identity
             mcc: Mobile Country Code
@@ -264,8 +257,6 @@ class GNBSIMOperatorCharm(CharmBase):
             amf_hostname=amf_hostname,
             amf_port=amf_port,
             gnb_ip_address=gnb_ip_address,
-            http_server_ip=http_server_ip,
-            http_server_port=http_server_port,
             icmp_packet_destination=icmp_packet_destination,
             imsi=imsi,
             mcc=mcc,
@@ -335,17 +326,6 @@ class GNBSIMOperatorCharm(CharmBase):
             environment=environment,
         )
         return process.wait_output()
-
-    @property
-    def _environment_variables(self) -> dict:
-        return {
-            "MEM_LIMIT": "1Gi",
-            "POD_IP": str(self._http_server_ip_address),
-        }
-
-    @property
-    def _http_server_ip_address(self) -> Optional[IPv4Address]:
-        return IPv4Address(check_output(["unit-get", "private-address"]).decode().strip())
 
 
 if __name__ == "__main__":  # pragma: nocover

@@ -29,9 +29,7 @@ configuration:
     enable: false
     port: 5000
   httpServer:
-    enable: true
-    ipAddr: 1.2.3.4
-    port: 6000
+    enable: false
   networkTopo:
   - upfAddr: 192.168.252.3
     upfGw: 192.168.251.1
