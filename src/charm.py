@@ -72,6 +72,7 @@ class GNBSIMOperatorCharm(CharmBase):
         self.framework.observe(self.on.config_changed, self._configure)
         self.framework.observe(self.on.gnbsim_pebble_ready, self._configure)
         self.framework.observe(self.on.start_simulation_action, self._on_start_simulation_action)
+        self.framework.observe(self.on.fiveg_n2_relation_joined, self._configure)
         self.framework.observe(self._n2_requirer.on.n2_information_available, self._configure)
 
     def _configure(self, event: EventBase) -> None:
@@ -94,9 +95,11 @@ class GNBSIMOperatorCharm(CharmBase):
             self.unit.status = WaitingStatus("Waiting for Multus to be ready")
             event.defer()
             return
+        if not self._relation_created(N2_RELATION_NAME):
+            self.unit.status = BlockedStatus("Waiting for N2 relation to be created")
+            return
         if not self._n2_requirer.amf_hostname or not self._n2_requirer.amf_port:
             self.unit.status = WaitingStatus("Waiting for N2 information")
-            event.defer()
             return
         content = self._render_config_file(
             amf_hostname=self._n2_requirer.amf_hostname,  # type: ignore[arg-type]
@@ -326,6 +329,17 @@ class GNBSIMOperatorCharm(CharmBase):
             environment=environment,
         )
         return process.wait_output()
+
+    def _relation_created(self, relation_name: str) -> bool:
+        """Returns whether a given Juju relation was crated.
+
+        Args:
+            relation_name (str): Relation name
+
+        Returns:
+            bool: Whether the relation was created.
+        """
+        return bool(self.model.relations[relation_name])
 
 
 if __name__ == "__main__":  # pragma: nocover

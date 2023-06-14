@@ -2,7 +2,7 @@
 # See LICENSE file for licensing details.
 
 import unittest
-from unittest.mock import Mock, PropertyMock, patch
+from unittest.mock import Mock, patch
 
 from ops import testing
 from ops.model import ActiveStatus, BlockedStatus, WaitingStatus
@@ -39,6 +39,29 @@ class TestCharm(unittest.TestCase):
         self.harness.set_model_name(name=self.namespace)
         self.addCleanup(self.harness.cleanup)
         self.harness.begin()
+
+    def _create_n2_relation(self) -> int:
+        """Creates a relation between gnbsim and amf.
+
+        Returns:
+            int: Id of the created relation
+        """
+        amf_relation_id = self.harness.add_relation(relation_name="fiveg-n2", remote_app="amf")
+        self.harness.add_relation_unit(relation_id=amf_relation_id, remote_unit_name="amf/0")
+        return amf_relation_id
+
+    def _n2_data_available(self) -> None:
+        """Creates the N2 relation and sets the relation data in the n2 relation."""
+        amf_relation_id = self._create_n2_relation()
+        self.harness.update_relation_data(
+            relation_id=amf_relation_id,
+            app_or_unit="amf",
+            key_values={
+                "amf_hostname": "amf",
+                "amf_port": "38412",
+                "amf_ip_address": "1.1.1.1",
+            },
+        )
 
     def test_given_default_config_when_config_changed_then_status_is_blocked(
         self,
@@ -99,7 +122,7 @@ class TestCharm(unittest.TestCase):
     @patch(f"{MULTUS_LIB_PATH}.KubernetesMultusCharmLib.is_ready")
     @patch("ops.model.Container.exec", new=Mock)
     @patch("ops.model.Container.exists")
-    def test_given_n2_information_not_available_when_config_changed_then_status_is_waiting(
+    def test_given_n2_relation_not_created_when_config_changed_then_status_is_blocked(
         self,
         patch_dir_exists,
         patch_is_ready,
@@ -113,11 +136,31 @@ class TestCharm(unittest.TestCase):
 
         self.assertEqual(
             self.harness.charm.unit.status,
+            BlockedStatus("Waiting for N2 relation to be created"),
+        )
+
+    @patch("ops.model.Container.push")
+    @patch(f"{MULTUS_LIB_PATH}.KubernetesMultusCharmLib.is_ready")
+    @patch("ops.model.Container.exec", new=Mock)
+    @patch("ops.model.Container.exists")
+    def test_given_n2_information_not_available_when_config_changed_then_status_is_waiting(
+        self,
+        patch_dir_exists,
+        patch_is_ready,
+        patch_push,
+    ):
+        patch_is_ready.return_value = True
+        patch_dir_exists.return_value = True
+        self.harness.set_can_connect(container="gnbsim", val=True)
+        self._create_n2_relation()
+
+        self.harness.update_config(key_values={})
+
+        self.assertEqual(
+            self.harness.charm.unit.status,
             WaitingStatus("Waiting for N2 information"),
         )
 
-    @patch("charms.sdcore_amf.v0.fiveg_n2.N2Requires.amf_hostname", new_callable=PropertyMock)
-    @patch("charms.sdcore_amf.v0.fiveg_n2.N2Requires.amf_port", new_callable=PropertyMock)
     @patch("ops.model.Container.push")
     @patch(f"{MULTUS_LIB_PATH}.KubernetesMultusCharmLib.is_ready")
     @patch("ops.model.Container.exec", new=Mock)
@@ -127,14 +170,12 @@ class TestCharm(unittest.TestCase):
         patch_dir_exists,
         patch_is_ready,
         patch_push,
-        patch_amf_port,
-        patch_amf_hostname,
     ):
-        patch_amf_port.return_value = 38412
-        patch_amf_hostname.return_value = "amf"
         patch_is_ready.return_value = True
         patch_dir_exists.return_value = True
         self.harness.set_can_connect(container="gnbsim", val=True)
+
+        self._n2_data_available()
 
         self.harness.update_config(key_values={})
 
@@ -147,7 +188,7 @@ class TestCharm(unittest.TestCase):
     @patch(f"{MULTUS_LIB_PATH}.KubernetesMultusCharmLib.is_ready")
     @patch("ops.model.Container.exec", new=Mock)
     @patch("ops.model.Container.exists")
-    def test_given_default_config_when_n2_relation_joined_then_config_is_written_to_workload(
+    def test_given_default_config_and_n2_info_available_when_n2_relation_joined_then_config_is_written_to_workload(  # noqa: E501
         self,
         patch_dir_exists,
         patch_is_ready,
@@ -157,25 +198,13 @@ class TestCharm(unittest.TestCase):
         patch_dir_exists.return_value = True
         self.harness.set_can_connect(container="gnbsim", val=True)
 
-        amf_relation_id = self.harness.add_relation(relation_name="fiveg-n2", remote_app="amf")
-        self.harness.add_relation_unit(relation_id=amf_relation_id, remote_unit_name="amf/0")
-        self.harness.update_relation_data(
-            relation_id=amf_relation_id,
-            app_or_unit="amf",
-            key_values={
-                "amf_hostname": "amf",
-                "amf_port": "38412",
-                "amf_ip_address": "1.1.1.1",
-            },
-        )
+        self._n2_data_available()
 
         expected_config_file_content = read_file("tests/unit/expected_config.yaml")
         patch_push.assert_called_with(
             source=expected_config_file_content, path="/etc/gnbsim/gnb.conf"
         )
 
-    @patch("charms.sdcore_amf.v0.fiveg_n2.N2Requires.amf_hostname", new_callable=PropertyMock)
-    @patch("charms.sdcore_amf.v0.fiveg_n2.N2Requires.amf_port", new_callable=PropertyMock)
     @patch("ops.model.Container.push", new=Mock)
     @patch(f"{MULTUS_LIB_PATH}.KubernetesMultusCharmLib.is_ready")
     @patch("ops.model.Container.exec", new=Mock)
@@ -184,21 +213,17 @@ class TestCharm(unittest.TestCase):
         self,
         patch_dir_exists,
         patch_is_ready,
-        patch_amf_port,
-        patch_amf_hostname,
     ):
-        patch_amf_port.return_value = 38412
-        patch_amf_hostname.return_value = "amf"
         patch_is_ready.return_value = True
         patch_dir_exists.return_value = True
         self.harness.set_can_connect(container="gnbsim", val=True)
+
+        self._n2_data_available()
 
         self.harness.update_config(key_values={})
 
         self.assertEqual(self.harness.charm.unit.status, ActiveStatus())
 
-    @patch("charms.sdcore_amf.v0.fiveg_n2.N2Requires.amf_hostname", new_callable=PropertyMock)
-    @patch("charms.sdcore_amf.v0.fiveg_n2.N2Requires.amf_port", new_callable=PropertyMock)
     @patch("ops.model.Container.push", new=Mock)
     @patch(f"{MULTUS_LIB_PATH}.KubernetesMultusCharmLib.is_ready")
     @patch("ops.model.Container.exec")
@@ -208,16 +233,14 @@ class TestCharm(unittest.TestCase):
         patch_dir_exists,
         patch_exec,
         patch_is_ready,
-        patch_amf_port,
-        patch_amf_hostname,
     ):
-        patch_amf_port.return_value = 38412
-        patch_amf_hostname.return_value = "amf"
         upf_ip_address = "1.1.1.1"
         upf_gateway = "2.2.2.2"
         patch_is_ready.return_value = True
         patch_dir_exists.return_value = True
         self.harness.set_can_connect(container="gnbsim", val=True)
+
+        self._n2_data_available()
 
         self.harness.update_config(
             key_values={
