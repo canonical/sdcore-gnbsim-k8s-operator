@@ -76,6 +76,7 @@ class TestCharm(unittest.TestCase):
     def test_given_cant_connect_to_workload_when_config_changed_then_status_is_waiting(
         self,
     ):
+        self._create_n2_relation()
         self.harness.set_can_connect(container="gnbsim", val=False)
 
         self.harness.update_config(key_values={})
@@ -92,6 +93,7 @@ class TestCharm(unittest.TestCase):
     ):
         patch_exists.return_value = False
         self.harness.set_can_connect(container="gnbsim", val=True)
+        self._create_n2_relation()
 
         self.harness.update_config(key_values={})
 
@@ -110,6 +112,7 @@ class TestCharm(unittest.TestCase):
         patch_exists.return_value = True
         patch_is_ready.return_value = False
         self.harness.set_can_connect(container="gnbsim", val=True)
+        self._create_n2_relation()
 
         self.harness.update_config(key_values={})
 
@@ -118,20 +121,9 @@ class TestCharm(unittest.TestCase):
             WaitingStatus("Waiting for Multus to be ready"),
         )
 
-    @patch("ops.model.Container.push")
-    @patch(f"{MULTUS_LIB_PATH}.KubernetesMultusCharmLib.is_ready")
-    @patch("ops.model.Container.exec", new=Mock)
-    @patch("ops.model.Container.exists")
     def test_given_n2_relation_not_created_when_config_changed_then_status_is_blocked(
         self,
-        patch_dir_exists,
-        patch_is_ready,
-        patch_push,
     ):
-        patch_is_ready.return_value = True
-        patch_dir_exists.return_value = True
-        self.harness.set_can_connect(container="gnbsim", val=True)
-
         self.harness.update_config(key_values={})
 
         self.assertEqual(

@@ -83,6 +83,9 @@ class GNBSIMOperatorCharm(CharmBase):
         if invalid_configs := self._get_invalid_configs():
             self.unit.status = BlockedStatus(f"Configurations are invalid: {invalid_configs}")
             return
+        if not self._relation_created(N2_RELATION_NAME):
+            self.unit.status = BlockedStatus("Waiting for N2 relation to be created")
+            return
         if not self._container.can_connect():
             self.unit.status = WaitingStatus("Waiting for container to be ready")
             event.defer()
@@ -95,9 +98,7 @@ class GNBSIMOperatorCharm(CharmBase):
             self.unit.status = WaitingStatus("Waiting for Multus to be ready")
             event.defer()
             return
-        if not self._relation_created(N2_RELATION_NAME):
-            self.unit.status = BlockedStatus("Waiting for N2 relation to be created")
-            return
+
         if not self._n2_requirer.amf_hostname or not self._n2_requirer.amf_port:
             self.unit.status = WaitingStatus("Waiting for N2 information")
             return
