@@ -16,7 +16,7 @@ resources:
   gnbsim-image:
     type: oci-image
     description: OCI image for 5G gnbsim
-    upstream-source: omecproject/5gc-gnbsim:main-1caccfc
+    upstream-source: ghcr.io/canonical/sdcore-gnbsim:1.3
 
 storage:
   config:

@@ -133,7 +133,7 @@ class GNBSIMOperatorCharm(CharmBase):
             return
         try:
             stdout, stderr = self._exec_command_in_workload(
-                command=f"/gnbsim/bin/gnbsim --cfg {BASE_CONFIG_PATH}/{CONFIG_FILE_NAME}",
+                command=f"/bin/gnbsim --cfg {BASE_CONFIG_PATH}/{CONFIG_FILE_NAME}",
             )
             if not stderr:
                 event.fail(message="No output in simulation")
@@ -316,18 +316,15 @@ class GNBSIMOperatorCharm(CharmBase):
     def _exec_command_in_workload(
         self,
         command: str,
-        environment: Optional[dict] = None,
     ) -> Tuple[Optional[str], Optional[str]]:
         """Executes command in workload container.
 
         Args:
             command: Command to execute
-            environment: Environment Variables
         """
         process = self._container.exec(
             command=command.split(),
             timeout=30,
-            environment=environment,
         )
         return process.wait_output()
 
