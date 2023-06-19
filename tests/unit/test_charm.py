@@ -244,7 +244,6 @@ class TestCharm(unittest.TestCase):
         patch_exec.assert_called_with(
             command=["ip", "route", "replace", upf_ip_address, "via", upf_gateway],
             timeout=30,
-            environment=None,
         )
 
     def test_given_cant_connect_to_workload_when_start_simulation_action_then_event_fails(self):
@@ -334,7 +333,25 @@ class TestCharm(unittest.TestCase):
 
     @patch("ops.model.Container.exec")
     @patch("ops.model.Container.exists")
-    def test_given_simulation_succeeds_swhen_start_simulation_action_then_simulation_result_is_true(  # noqa: E501
+    def test_given_can_connect_to_workload_when_start_simulation_action_then_simulation_is_started(
+        self, patch_exists, patch_exec
+    ):
+        event = Mock()
+        patch_exists.return_value = True
+        patch_process = Mock()
+        patch_exec.return_value = patch_process
+        patch_process.wait_output.return_value = ("Whatever stdout", "Whatever stderr")
+        self.harness.set_can_connect(container="gnbsim", val=True)
+
+        self.harness.charm._on_start_simulation_action(event=event)
+
+        patch_exec.assert_any_call(
+            command=["/bin/gnbsim", "--cfg", "/etc/gnbsim/gnb.conf"], timeout=30
+        )
+
+    @patch("ops.model.Container.exec")
+    @patch("ops.model.Container.exists")
+    def test_given_simulation_succeeds_when_start_simulation_action_then_simulation_result_is_true(
         self, patch_exists, patch_exec
     ):
         event = Mock()

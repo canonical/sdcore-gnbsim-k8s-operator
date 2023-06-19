@@ -23,4 +23,4 @@ juju run sdcore-gnbsim/leader start-simulation
 
 ## Image
 
-- **gnbsim**: `omecproject/5gc-gnbsim:main-1caccfc`
+- **gnbsim**: `ghcr.io/canonical/sdcore-gnbsim:1.3`
