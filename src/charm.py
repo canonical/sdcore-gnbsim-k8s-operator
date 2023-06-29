@@ -324,7 +324,7 @@ class GNBSIMOperatorCharm(CharmBase):
         """
         process = self._container.exec(
             command=command.split(),
-            timeout=30,
+            timeout=300,
         )
         return process.wait_output()
 
