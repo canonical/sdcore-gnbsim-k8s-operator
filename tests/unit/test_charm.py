@@ -243,7 +243,7 @@ class TestCharm(unittest.TestCase):
 
         patch_exec.assert_called_with(
             command=["ip", "route", "replace", upf_ip_address, "via", upf_gateway],
-            timeout=30,
+            timeout=300,
         )
 
     def test_given_cant_connect_to_workload_when_start_simulation_action_then_event_fails(self):
@@ -346,7 +346,7 @@ class TestCharm(unittest.TestCase):
         self.harness.charm._on_start_simulation_action(event=event)
 
         patch_exec.assert_any_call(
-            command=["/bin/gnbsim", "--cfg", "/etc/gnbsim/gnb.conf"], timeout=30
+            command=["/bin/gnbsim", "--cfg", "/etc/gnbsim/gnb.conf"], timeout=300
         )
 
     @patch("ops.model.Container.exec")
