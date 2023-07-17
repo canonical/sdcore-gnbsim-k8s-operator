@@ -3,6 +3,9 @@ options:
     type: string
     default: "192.168.251.5/24"
     description: gNodeB IP Address
+  gnb-interface:
+    type: string
+    description: Host interface to use for the RAN Network.
   icmp-packet-destination:
     type: string
     default: "192.168.250.1"
