@@ -1,5 +1,5 @@
-# copyright 2023 canonical ltd.
-# see license file for licensing details.
+# Copyright 2023 Canonical Ltd.
+# See LICENSE file for licensing details.
 
 import json
 import unittest
