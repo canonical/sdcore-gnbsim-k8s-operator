@@ -1,6 +1,7 @@
 # Copyright 2023 Canonical Ltd.
 # See LICENSE file for licensing details.
 
+import json
 import unittest
 from unittest.mock import Mock, patch
 
@@ -366,3 +367,33 @@ class TestCharm(unittest.TestCase):
         event.set_results.assert_called_with(
             {"success": "true", "info": "run juju debug-log to get more information."}
         )
+
+    def test_given_default_config_when_network_attachment_definitions_from_config_is_called_then_no_interface_specified_in_nad(  # noqa: E501
+        self,
+    ):
+        self.harness.disable_hooks()
+        self.harness.update_config(
+            key_values={
+                "gnb-ip-address": "192.168.251.5",
+            }
+        )
+        nad = self.harness.charm._network_attachment_definition_from_config()
+        config = json.loads(nad["config"])
+        self.assertNotIn("master", config)
+        self.assertEqual("bridge", config["type"])
+        self.assertEqual(config["bridge"], "ran-br")
+
+    def test_given_default_config_with_interfaces_when_network_attachment_definitions_from_config_is_called_then_interfaces_specified_in_nad(  # noqa: E501
+        self,
+    ):
+        self.harness.disable_hooks()
+        self.harness.update_config(
+            key_values={
+                "gnb-ip-address": "192.168.251.5",
+                "gnb-interface": "gnb",
+            }
+        )
+        nad = self.harness.charm._network_attachment_definition_from_config()
+        config = json.loads(nad["config"])
+        self.assertEqual(config["master"], "gnb")
+        self.assertEqual(config["type"], "macvlan")

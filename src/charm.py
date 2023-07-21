@@ -6,7 +6,7 @@
 
 import json
 import logging
-from typing import Optional, Tuple
+from typing import Any, Optional, Tuple
 
 from charms.kubernetes_charm_libraries.v0.multus import (  # type: ignore[import]
     KubernetesMultusCharmLib,
@@ -48,22 +48,13 @@ class GNBSIMOperatorCharm(CharmBase):
                 ServicePort(name="ngapp", port=38412, protocol="SCTP"),
             ],
         )
-        network_attachment_definition_spec = {
-            "config": json.dumps(
-                {
-                    "cniVersion": "0.3.1",
-                    "type": "macvlan",
-                    "ipam": {"type": "static"},
-                }
-            )
-        }
         self._kubernetes_multus = KubernetesMultusCharmLib(
             charm=self,
             containers_requiring_net_admin_capability=[self._container_name],
             network_attachment_definitions=[
                 NetworkAttachmentDefinition(
                     metadata=ObjectMeta(name=NETWORK_ATTACHMENT_DEFINITION_NAME),
-                    spec=network_attachment_definition_spec,
+                    spec=self._network_attachment_definition_from_config(),
                 ),
             ],
             network_annotations_func=self._network_annotations_from_config,
@@ -150,6 +141,19 @@ class GNBSIMOperatorCharm(CharmBase):
         except ChangeError as e:
             event.fail(message=f"Failed to execute simulation: {e.err}")
 
+    def _network_attachment_definition_from_config(self) -> dict[str, Any]:
+        ran_nad_config = {
+            "cniVersion": "0.3.1",
+            "type": "macvlan",
+            "ipam": {"type": "static"},
+        }
+        if (gnb_interface := self._get_gnb_interface_from_config()) is not None:
+            ran_nad_config.update({"type": "macvlan", "master": gnb_interface})
+        else:
+            ran_nad_config.update({"type": "bridge", "bridge": "ran-br"})
+        network_attachment_definition_spec = {"config": json.dumps(ran_nad_config)}
+        return network_attachment_definition_spec
+
     def _network_annotations_from_config(self) -> list[NetworkAnnotation]:
         """Returns the list of network annotation to be added to the charm statefulset.
 
@@ -168,6 +172,9 @@ class GNBSIMOperatorCharm(CharmBase):
 
     def _get_gnb_ip_address_from_config(self) -> Optional[str]:
         return self.model.config.get("gnb-ip-address")
+
+    def _get_gnb_interface_from_config(self) -> Optional[str]:
+        return self.model.config.get("gnb-interface")
 
     def _get_icmp_packet_destination_from_config(self) -> Optional[str]:
         return self.model.config.get("icmp-packet-destination")
