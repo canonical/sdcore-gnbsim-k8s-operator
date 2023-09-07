@@ -70,6 +70,9 @@ class GNBSIMOperatorCharm(CharmBase):
         """Juju event handler.
 
         Sets unit status, writes gnbsim configuration file and sets ip route.
+
+        Args:
+            event: Juju event
         """
         if invalid_configs := self._get_invalid_configs():
             self.unit.status = BlockedStatus(f"Configurations are invalid: {invalid_configs}")
