@@ -115,7 +115,7 @@ Examples:
         unit: <empty>
         app: {
             "gnb_name": "gnb001",
-            "tac": "1"
+            "tac": "00001"
         }
     RequirerSchema:
         unit: <empty>
@@ -130,9 +130,9 @@ class FivegGnbIdentityProviderAppData(BaseModel):
         description="Name of the gnB.",
         examples=["gnb001"]
     )
-    tac: int = Field(
+    tac: str = Field(
         description="Tracking Area Code",
-        examples=[1]
+        examples=["00001"]
     )
 
 class ProviderSchema(DataBagSchema):
@@ -201,14 +201,14 @@ class GnbIdentityProvides(Object):
         self.framework.observe(charm.on[relation_name].relation_joined, self._on_relation_joined)
 
     def publish_gnb_identity_information(
-        self, relation_id: int, gnb_name: str, tac: int
+        self, relation_id: int, gnb_name: str, tac: str
     ) -> None:
         """Sets gNodeB's name and TAC in the relation data.
 
         Args:
             relation_id (str): Relation ID
             gnb_name (str): name of the gNodeB.
-            tac (int): Tracking Area Code.
+            tac (str): Tracking Area Code.
         """
         if not data_matches_provider_schema(
             data={"gnb_name": gnb_name, "tac": tac}
@@ -220,7 +220,7 @@ class GnbIdentityProvides(Object):
         if not relation:
             raise RuntimeError(f"Relation {self.relation_name} not created yet.")
         relation.data[self.charm.app]["gnb_name"] = gnb_name
-        relation.data[self.charm.app]["tac"] = str(tac)
+        relation.data[self.charm.app]["tac"] = tac
 
     def _on_relation_joined(self, event: RelationJoinedEvent) -> None:
         """Triggered whenever a requirer charm joins the relation.
@@ -234,7 +234,7 @@ class GnbIdentityProvides(Object):
 class GnbIdentityAvailableEvent(EventBase):
     """Dataclass for the `fiveg_gnb_identity` available event."""
 
-    def __init__(self, handle, gnb_name: str, tac: int):
+    def __init__(self, handle, gnb_name: str, tac: str):
         """Sets gNodeB's name and TAC."""
         super().__init__(handle)
         self.gnb_name = gnb_name
