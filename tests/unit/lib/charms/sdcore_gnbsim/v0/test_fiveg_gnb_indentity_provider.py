@@ -24,7 +24,7 @@ class TestGnbIdentityProvides(unittest.TestCase):
         self, patched_test_tac, patched_test_gnb_name
     ):
         test_gnb_name = "gnb004"
-        test_tac = 1234
+        test_tac = "0002"
         patched_test_gnb_name.return_value = test_gnb_name
         patched_test_tac.return_value = test_tac
         relation_id = self.harness.add_relation(
@@ -36,7 +36,7 @@ class TestGnbIdentityProvides(unittest.TestCase):
             relation_id=relation_id, app_or_unit=self.harness.charm.app
         )
         self.assertEqual(test_gnb_name, relation_data["gnb_name"])
-        self.assertEqual(str(test_tac), relation_data["tac"])
+        self.assertEqual(test_tac, relation_data["tac"])
 
     @patch(f"{TEST_CHARM_PATH}.TEST_GNB_NAME", new_callable=PropertyMock)
     @patch(f"{TEST_CHARM_PATH}.TEST_TAC", new_callable=PropertyMock)
@@ -44,7 +44,7 @@ class TestGnbIdentityProvides(unittest.TestCase):
         self, patched_test_tac, patched_test_gnb_name
     ):
         test_invalid_gnb_name = None
-        test_tac = 1234
+        test_tac = "0002"
         patched_test_gnb_name.return_value = test_invalid_gnb_name
         patched_test_tac.return_value = test_tac
 
@@ -60,7 +60,7 @@ class TestGnbIdentityProvides(unittest.TestCase):
         self, patched_test_tac, patched_test_gnb_name
     ):
         test_gnb_name = "gnb005"
-        test_invalid_tac = "not_an_int"
+        test_invalid_tac = None
         patched_test_gnb_name.return_value = test_gnb_name
         patched_test_tac.return_value = test_invalid_tac
 
