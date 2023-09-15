@@ -91,7 +91,7 @@ from ops.framework import EventBase, EventSource, Object
 from pydantic import BaseModel, Field, ValidationError
 
 # The unique Charmhub library identifier, never change it
-LIBID = "bc6261cf77104d4fb3edfd6d4ea63149" # HOW DO I GENERATE IT
+LIBID = "ca9a66c5806e47e7b2750e8cdf696b80"
 
 # Increment this major API version when introducing breaking changes
 LIBAPI = 0
