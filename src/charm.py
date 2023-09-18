@@ -17,6 +17,7 @@ from charms.observability_libs.v1.kubernetes_service_patch import (  # type: ign
     KubernetesServicePatch,
 )
 from charms.sdcore_amf.v0.fiveg_n2 import N2Requires  # type: ignore[import]
+from charms.sdcore_gnbsim.v0.fiveg_gnb_identity import GnbIdentityProvides
 from jinja2 import Environment, FileSystemLoader
 from lightkube.models.core_v1 import ServicePort
 from lightkube.models.meta_v1 import ObjectMeta
@@ -32,6 +33,7 @@ BASE_CONFIG_PATH = "/etc/gnbsim"
 CONFIG_FILE_NAME = "gnb.conf"
 NETWORK_ATTACHMENT_DEFINITION_NAME = "gnb-net"
 N2_RELATION_NAME = "fiveg-n2"
+GNB_IDENTITY_RELATION_NAME = "fiveg_gnb_identity"
 
 
 class GNBSIMOperatorCharm(CharmBase):
@@ -59,12 +61,17 @@ class GNBSIMOperatorCharm(CharmBase):
             ],
             network_annotations_func=self._network_annotations_from_config,
         )
+        self._gnb_identity_provider = GnbIdentityProvides(self, GNB_IDENTITY_RELATION_NAME)
 
         self.framework.observe(self.on.config_changed, self._configure)
         self.framework.observe(self.on.gnbsim_pebble_ready, self._configure)
         self.framework.observe(self.on.start_simulation_action, self._on_start_simulation_action)
         self.framework.observe(self.on.fiveg_n2_relation_joined, self._configure)
         self.framework.observe(self._n2_requirer.on.n2_information_available, self._configure)
+        self.framework.observe(
+            self._gnb_identity_provider.on.fiveg_gnb_identity_request,
+            self._update_fiveg_gnb_identity_relation_data,
+        )
 
     def _configure(self, event: EventBase) -> None:
         """Juju event handler.
@@ -77,6 +84,7 @@ class GNBSIMOperatorCharm(CharmBase):
         if invalid_configs := self._get_invalid_configs():
             self.unit.status = BlockedStatus(f"Configurations are invalid: {invalid_configs}")
             return
+        self._update_fiveg_gnb_identity_relation_data()
         if not self._relation_created(N2_RELATION_NAME):
             self.unit.status = BlockedStatus("Waiting for N2 relation to be created")
             return
@@ -96,6 +104,7 @@ class GNBSIMOperatorCharm(CharmBase):
         if not self._n2_requirer.amf_hostname or not self._n2_requirer.amf_port:
             self.unit.status = WaitingStatus("Waiting for N2 information")
             return
+
         content = self._render_config_file(
             amf_hostname=self._n2_requirer.amf_hostname,  # type: ignore[arg-type]
             amf_port=self._n2_requirer.amf_port,  # type: ignore[arg-type]
@@ -143,6 +152,19 @@ class GNBSIMOperatorCharm(CharmBase):
             event.fail(message=f"Failed to execute simulation: {str(e.stderr)}")
         except ChangeError as e:
             event.fail(message=f"Failed to execute simulation: {e.err}")
+
+    def _update_fiveg_gnb_identity_relation_data(self, event: EventBase = None) -> None:
+        """Publishes GNB name and TAC in the `fiveg_gnb_identity` relation data bag."""
+        if not self.unit.is_leader():
+            return
+        fiveg_gnb_identity_relations = self.model.relations.get(GNB_IDENTITY_RELATION_NAME)
+        if not fiveg_gnb_identity_relations:
+            logger.info(f"No `{GNB_IDENTITY_RELATION_NAME}` relations found.")
+            return
+        for relation in fiveg_gnb_identity_relations:
+            self._gnb_identity_provider.publish_gnb_identity_information(
+                relation_id=relation.id, gnb_name=self._gnb_name, tac=self._get_tac_from_config()
+            )
 
     def _network_attachment_definition_from_config(self) -> dict[str, Any]:
         ran_nad_config = {
@@ -348,6 +370,10 @@ class GNBSIMOperatorCharm(CharmBase):
             bool: Whether the relation was created.
         """
         return bool(self.model.relations[relation_name])
+
+    @property
+    def _gnb_name(self) -> str:
+        return f"{self.model.name}-gnbsim-{self.app.name}"
 
 
 if __name__ == "__main__":  # pragma: nocover
