@@ -70,7 +70,7 @@ class GNBSIMOperatorCharm(CharmBase):
         self.framework.observe(self._n2_requirer.on.n2_information_available, self._configure)
         self.framework.observe(
             self._gnb_identity_provider.on.fiveg_gnb_identity_request,
-            self._update_fiveg_gnb_identity_relation_data,
+            self._on_fiveg_gnb_identity_request,
         )
 
     def _configure(self, event: EventBase) -> None:
@@ -84,7 +84,6 @@ class GNBSIMOperatorCharm(CharmBase):
         if invalid_configs := self._get_invalid_configs():
             self.unit.status = BlockedStatus(f"Configurations are invalid: {invalid_configs}")
             return
-        self._update_fiveg_gnb_identity_relation_data()
         if not self._relation_created(N2_RELATION_NAME):
             self.unit.status = BlockedStatus("Waiting for N2 relation to be created")
             return
@@ -123,6 +122,7 @@ class GNBSIMOperatorCharm(CharmBase):
             usim_key=self._get_usim_key_from_config(),  # type: ignore[arg-type]
         )
         self._write_config_file(content=content)
+        self._update_fiveg_gnb_identity_relation_data()
         self._create_upf_route()
         self.unit.status = ActiveStatus()
 
@@ -153,17 +153,27 @@ class GNBSIMOperatorCharm(CharmBase):
         except ChangeError as e:
             event.fail(message=f"Failed to execute simulation: {e.err}")
 
-    def _update_fiveg_gnb_identity_relation_data(self, event: EventBase = None) -> None:
-        """Publishes GNB name and TAC in the `fiveg_gnb_identity` relation data bag."""
+    def _on_fiveg_gnb_identity_request(self, event: EventBase) -> None:
+        """Handles 5G GNB Identity request events.
+
+        Args:
+            event: Juju event
+        """
         if not self.unit.is_leader():
             return
+        self._update_fiveg_gnb_identity_relation_data()
+
+    def _update_fiveg_gnb_identity_relation_data(self) -> None:
+        """Publishes GNB name and TAC in the `fiveg_gnb_identity` relation data bag."""
         fiveg_gnb_identity_relations = self.model.relations.get(GNB_IDENTITY_RELATION_NAME)
         if not fiveg_gnb_identity_relations:
             logger.info(f"No `{GNB_IDENTITY_RELATION_NAME}` relations found.")
             return
-        for relation in fiveg_gnb_identity_relations:
+        for gnb_identity_relation in fiveg_gnb_identity_relations:
             self._gnb_identity_provider.publish_gnb_identity_information(
-                relation_id=relation.id, gnb_name=self._gnb_name, tac=self._get_tac_from_config()
+                relation_id=gnb_identity_relation.id,
+                gnb_name=self._gnb_name,
+                tac=self._get_tac_from_config(),
             )
 
     def _network_attachment_definition_from_config(self) -> dict[str, Any]:
