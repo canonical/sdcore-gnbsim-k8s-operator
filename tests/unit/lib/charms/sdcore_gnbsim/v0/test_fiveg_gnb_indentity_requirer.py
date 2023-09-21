@@ -30,7 +30,7 @@ class TestGnbIdentityRequires(unittest.TestCase):
 
         self.harness.update_relation_data(
             relation_id=relation_id,
-            app_or_unit="whatever-app/0",
+            app_or_unit="whatever-app",
             key_values={"gnb_name": test_gnb_name, "tac": test_tac},
         )
 

@@ -284,7 +284,7 @@ class GnbIdentityRequires(Object):
             event (RelationChangedEvent): Juju event
         """
         relation_data = event.relation.data
-        gnb_name = relation_data[event.unit].get("gnb_name")  # type: ignore[index]
-        tac = relation_data[event.unit].get("tac")  # type: ignore[index]
+        gnb_name = relation_data[event.app].get("gnb_name")  # type: ignore[index]
+        tac = relation_data[event.app].get("tac")  # type: ignore[index]
         if gnb_name and tac:
             self.on.fiveg_gnb_identity_available.emit(gnb_name=gnb_name, tac=tac)
