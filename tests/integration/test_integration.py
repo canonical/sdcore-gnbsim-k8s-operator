@@ -16,6 +16,7 @@ APP_NAME = METADATA["name"]
 AMF_CHARM_NAME = "sdcore-amf"
 DB_CHARM_NAME = "mongodb-k8s"
 NRF_CHARM_NAME = "sdcore-nrf"
+TLS_PROVIDER_CHARM_NAME = "self-signed-certificates"
 
 
 @pytest.fixture(scope="module")
@@ -37,7 +38,9 @@ async def build_and_deploy(ops_test):
         application_name=AMF_CHARM_NAME,
         channel="edge",
         trust=True,
+        config={"external-amf-ip": "192.168.70.132", "external-amf-hostname": "amf"},
     )
+
     await ops_test.model.deploy(
         DB_CHARM_NAME,
         application_name=DB_CHARM_NAME,
@@ -49,6 +52,10 @@ async def build_and_deploy(ops_test):
         application_name=NRF_CHARM_NAME,
         channel="edge",
         trust=True,
+    )
+
+    await ops_test.model.deploy(
+        TLS_PROVIDER_CHARM_NAME, application_name=TLS_PROVIDER_CHARM_NAME, channel="beta"
     )
 
 
@@ -75,6 +82,8 @@ async def test_relate_and_wait_for_active_status(
     await ops_test.model.add_relation(
         relation1=f"{AMF_CHARM_NAME}:database", relation2=f"{DB_CHARM_NAME}"
     )
+    await ops_test.model.add_relation(relation1=AMF_CHARM_NAME, relation2=TLS_PROVIDER_CHARM_NAME)
+    await ops_test.model.add_relation(relation1=NRF_CHARM_NAME, relation2=TLS_PROVIDER_CHARM_NAME)
     await ops_test.model.add_relation(relation1=AMF_CHARM_NAME, relation2=NRF_CHARM_NAME)
     await ops_test.model.add_relation(relation1=f"{APP_NAME}:fiveg-n2", relation2=AMF_CHARM_NAME)
     await ops_test.model.wait_for_idle(
