@@ -21,7 +21,7 @@ from jinja2 import Environment, FileSystemLoader
 from lightkube.models.core_v1 import ServicePort
 from lightkube.models.meta_v1 import ObjectMeta
 from ops.charm import ActionEvent, CharmBase, CharmEvents
-from ops.framework import EventBase, Handle, EventSource
+from ops.framework import EventBase, EventSource, Handle
 from ops.main import main
 from ops.model import ActiveStatus, BlockedStatus, WaitingStatus
 from ops.pebble import ChangeError, ExecError
