@@ -6,7 +6,7 @@
 
 import json
 import logging
-from typing import Any, Optional, Tuple
+from typing import Optional, Tuple
 
 from charms.kubernetes_charm_libraries.v0.multus import (  # type: ignore[import]
     KubernetesMultusCharmLib,
@@ -20,8 +20,8 @@ from charms.sdcore_amf.v0.fiveg_n2 import N2Requires  # type: ignore[import]
 from jinja2 import Environment, FileSystemLoader
 from lightkube.models.core_v1 import ServicePort
 from lightkube.models.meta_v1 import ObjectMeta
-from ops.charm import ActionEvent, CharmBase
-from ops.framework import EventBase
+from ops.charm import ActionEvent, CharmBase, CharmEvents
+from ops.framework import EventBase, Handle, EventSource
 from ops.main import main
 from ops.model import ActiveStatus, BlockedStatus, WaitingStatus
 from ops.pebble import ChangeError, ExecError
@@ -30,12 +30,28 @@ logger = logging.getLogger(__name__)
 
 BASE_CONFIG_PATH = "/etc/gnbsim"
 CONFIG_FILE_NAME = "gnb.conf"
-NETWORK_ATTACHMENT_DEFINITION_NAME = "gnb-net"
+GNB_INTERFACE_NAME = "gnb"
+GNB_NETWORK_ATTACHMENT_DEFINITION_NAME = "gnb-net"
 N2_RELATION_NAME = "fiveg-n2"
+
+
+class NadConfigChangedEvent(EventBase):
+    """Event triggered when an existing network attachment definition is changed."""
+
+    def __init__(self, handle: Handle):
+        super().__init__(handle)
+
+
+class KubernetesMultusCharmEvents(CharmEvents):
+    """Kubernetes Multus Charm Events."""
+
+    nad_config_changed = EventSource(NadConfigChangedEvent)
 
 
 class GNBSIMOperatorCharm(CharmBase):
     """Main class to describe juju event handling for the 5G GNBSIM operator."""
+
+    on = KubernetesMultusCharmEvents()
 
     def __init__(self, *args):
         super().__init__(*args)
@@ -50,14 +66,16 @@ class GNBSIMOperatorCharm(CharmBase):
         )
         self._kubernetes_multus = KubernetesMultusCharmLib(
             charm=self,
-            containers_requiring_net_admin_capability=[self._container_name],
-            network_attachment_definitions=[
-                NetworkAttachmentDefinition(
-                    metadata=ObjectMeta(name=NETWORK_ATTACHMENT_DEFINITION_NAME),
-                    spec=self._network_attachment_definition_from_config(),
+            container_name=self._container_name,
+            cap_net_admin=True,
+            network_annotations=[
+                NetworkAnnotation(
+                    name=GNB_NETWORK_ATTACHMENT_DEFINITION_NAME,
+                    interface=GNB_INTERFACE_NAME,
                 ),
             ],
-            network_annotations_func=self._network_annotations_from_config,
+            network_attachment_definitions_func=self._network_attachment_definitions_from_config,
+            refresh_event=self.on.nad_config_changed,
         )
 
         self.framework.observe(self.on.config_changed, self._configure)
@@ -77,6 +95,7 @@ class GNBSIMOperatorCharm(CharmBase):
         if invalid_configs := self._get_invalid_configs():
             self.unit.status = BlockedStatus(f"Configurations are invalid: {invalid_configs}")
             return
+        self.on.nad_config_changed.emit()
         if not self._relation_created(N2_RELATION_NAME):
             self.unit.status = BlockedStatus("Waiting for N2 relation to be created")
             return
@@ -96,6 +115,7 @@ class GNBSIMOperatorCharm(CharmBase):
         if not self._n2_requirer.amf_hostname or not self._n2_requirer.amf_port:
             self.unit.status = WaitingStatus("Waiting for N2 information")
             return
+
         content = self._render_config_file(
             amf_hostname=self._n2_requirer.amf_hostname,  # type: ignore[arg-type]
             amf_port=self._n2_requirer.amf_port,  # type: ignore[arg-type]
@@ -144,33 +164,29 @@ class GNBSIMOperatorCharm(CharmBase):
         except ChangeError as e:
             event.fail(message=f"Failed to execute simulation: {e.err}")
 
-    def _network_attachment_definition_from_config(self) -> dict[str, Any]:
-        ran_nad_config = {
+    def _network_attachment_definitions_from_config(self) -> list[NetworkAttachmentDefinition]:
+        """Returns list of Multus NetworkAttachmentDefinitions to be created based on config."""
+        gnb_nad_config = {
             "cniVersion": "0.3.1",
-            "type": "macvlan",
-            "ipam": {"type": "static"},
+            "ipam": {
+                "type": "static",
+                "addresses": [
+                    {
+                        "address": self._get_gnb_ip_address_from_config(),
+                    }
+                ],
+            },
+            "capabilities": {"mac": True},
         }
         if (gnb_interface := self._get_gnb_interface_from_config()) is not None:
-            ran_nad_config.update({"type": "macvlan", "master": gnb_interface})
+            gnb_nad_config.update({"type": "macvlan", "master": gnb_interface})
         else:
-            ran_nad_config.update({"type": "bridge", "bridge": "ran-br"})
-        network_attachment_definition_spec = {"config": json.dumps(ran_nad_config)}
-        return network_attachment_definition_spec
-
-    def _network_annotations_from_config(self) -> list[NetworkAnnotation]:
-        """Returns the list of network annotation to be added to the charm statefulset.
-
-        Annotations use configuration values provided in the Juju config.
-
-        Returns:
-            List: List of NetworkAnnotation objects.
-        """
+            gnb_nad_config.update({"type": "bridge", "bridge": "ran-br"})
         return [
-            NetworkAnnotation(
-                name=NETWORK_ATTACHMENT_DEFINITION_NAME,
-                interface="gnb",
-                ips=[self._get_gnb_ip_address_from_config()],
-            )
+            NetworkAttachmentDefinition(
+                metadata=ObjectMeta(name=GNB_NETWORK_ATTACHMENT_DEFINITION_NAME),
+                spec={"config": json.dumps(gnb_nad_config)},
+            ),
         ]
 
     def _get_gnb_ip_address_from_config(self) -> Optional[str]:

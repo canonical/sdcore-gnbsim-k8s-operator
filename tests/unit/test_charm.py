@@ -377,8 +377,8 @@ class TestCharm(unittest.TestCase):
                 "gnb-ip-address": "192.168.251.5",
             }
         )
-        nad = self.harness.charm._network_attachment_definition_from_config()
-        config = json.loads(nad["config"])
+        nad = self.harness.charm._network_attachment_definitions_from_config()
+        config = json.loads(nad[0].spec["config"])
         self.assertNotIn("master", config)
         self.assertEqual("bridge", config["type"])
         self.assertEqual(config["bridge"], "ran-br")
@@ -393,7 +393,7 @@ class TestCharm(unittest.TestCase):
                 "gnb-interface": "gnb",
             }
         )
-        nad = self.harness.charm._network_attachment_definition_from_config()
-        config = json.loads(nad["config"])
+        nad = self.harness.charm._network_attachment_definitions_from_config()
+        config = json.loads(nad[0].spec["config"])
         self.assertEqual(config["master"], "gnb")
         self.assertEqual(config["type"], "macvlan")

@@ -3,6 +3,9 @@
 .coverage
 .mypy_cache/
 .tox/
+.settings/
+.project
+.pydevproject
 
 # Python
 **/venv/**
