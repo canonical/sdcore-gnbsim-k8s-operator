@@ -41,3 +41,27 @@ jobs:
     with:
       charm-file-name: "sdcore-gnbsim_ubuntu-22.04-amd64.charm"
     secrets: inherit
+
+  fiveg-gnb-identity-lib-needs-publishing:
+    runs-on: ubuntu-22.04
+    outputs:
+      needs-publishing: ${{ steps.changes.outputs.fiveg_gnb_identity }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dorny/paths-filter@v2
+        id: changes
+        with:
+          filters: |
+            fiveg_gnb_identity:
+              - 'lib/charms/sdcore_gnbsim/v0/fiveg_gnb_identity.py'
+
+  publish-fiveg-gnb-identity-lib:
+    name: Publish Lib
+    needs:
+      - publish-charm
+      - fiveg-gnb-identity-lib-needs-publishing
+    if: ${{ github.ref_name == 'main' }}
+    uses: canonical/sdcore-github-workflows/.github/workflows/publish-lib.yaml@main
+    with:
+      lib-name: "charms.sdcore_gnbsim.v0.fiveg_gnb_identity"
+    secrets: inherit
