@@ -17,7 +17,7 @@ from charms.observability_libs.v1.kubernetes_service_patch import (  # type: ign
     KubernetesServicePatch,
 )
 from charms.sdcore_amf.v0.fiveg_n2 import N2Requires  # type: ignore[import]
-from charms.sdcore_gnbsim.v0.fiveg_gnb_identity import GnbIdentityProvides
+from charms.sdcore_gnbsim.v0.fiveg_gnb_identity import GnbIdentityProvides  # type: ignore[import]
 from jinja2 import Environment, FileSystemLoader
 from lightkube.models.core_v1 import ServicePort
 from lightkube.models.meta_v1 import ObjectMeta
@@ -404,9 +404,9 @@ class GNBSIMOperatorCharm(CharmBase):
         """
         tac = None
         try:
-            tac = int(self.model.config.get("tac"), 16)
+            tac = int(self.model.config.get("tac"), 16)  # type: ignore[arg-type]
         except ValueError:
-            logger.info("Invalid TAC value: it cannot be converted to integer.")
+            logger.info("Invalid TAC value in config: it cannot be converted to integer.")
         return tac
 
 
