@@ -22,7 +22,7 @@ class TestGnbIdentityRequires(unittest.TestCase):
         self, patched_gnb_identity_available_event
     ):
         test_gnb_name = "gnb0055"
-        test_tac = "1234"
+        test_tac = 1234
         relation_id = self.harness.add_relation(
             relation_name=self.relation_name, remote_app="whatever-app"
         )
@@ -31,10 +31,10 @@ class TestGnbIdentityRequires(unittest.TestCase):
         self.harness.update_relation_data(
             relation_id=relation_id,
             app_or_unit="whatever-app",
-            key_values={"gnb_name": test_gnb_name, "tac": test_tac},
+            key_values={"gnb_name": test_gnb_name, "tac": str(test_tac)},
         )
 
         calls = [
-            call.emit(gnb_name=test_gnb_name, tac=test_tac),
+            call.emit(gnb_name=test_gnb_name, tac=str(test_tac)),
         ]
         patched_gnb_identity_available_event.assert_has_calls(calls)
