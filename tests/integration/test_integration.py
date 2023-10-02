@@ -38,7 +38,6 @@ async def build_and_deploy(ops_test):
         application_name=AMF_CHARM_NAME,
         channel="edge",
         trust=True,
-        config={"external-amf-ip": "192.168.70.132", "external-amf-hostname": "amf"},
     )
 
     await ops_test.model.deploy(
