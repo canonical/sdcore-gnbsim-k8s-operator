@@ -416,7 +416,7 @@ class TestCharm(unittest.TestCase):
         )
 
     @patch(f"{GNB_IDENTITY_LIB_PATH}.GnbIdentityProvides.publish_gnb_identity_information")
-    def test_given_no_tac_in_config_when_fiveg_gnb_identity_request_then_default_tac_is_published(  # noqa: E501
+    def test_given_no_tac_in_config_when_fiveg_gnb_identity_request_then_default_tac_is_published(
         self, patched_publish_gnb_identity
     ):
         self.harness.set_leader(is_leader=True)
