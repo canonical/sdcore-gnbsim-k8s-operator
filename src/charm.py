@@ -169,17 +169,16 @@ class GNBSIMOperatorCharm(CharmBase):
         if not fiveg_gnb_identity_relations:
             logger.info("No %s relations found.", GNB_IDENTITY_RELATION_NAME)
             return
-        gnb_name = self._gnb_name
-        tac = self._get_tac_as_int()
 
+        tac = self._get_tac_as_int()
         if not tac:
-            logger.warning(
+            logger.error(
                 "TAC value cannot be published on the %s relation", GNB_IDENTITY_RELATION_NAME
             )
             return
         for gnb_identity_relation in fiveg_gnb_identity_relations:
             self._gnb_identity_provider.publish_gnb_identity_information(
-                relation_id=gnb_identity_relation.id, gnb_name=gnb_name, tac=tac
+                relation_id=gnb_identity_relation.id, gnb_name=self._gnb_name, tac=tac
             )
 
     def _network_attachment_definition_from_config(self) -> dict[str, Any]:
@@ -406,7 +405,7 @@ class GNBSIMOperatorCharm(CharmBase):
         try:
             tac = int(self.model.config.get("tac"), 16)  # type: ignore[arg-type]
         except ValueError:
-            logger.info("Invalid TAC value in config: it cannot be converted to integer.")
+            logger.error("Invalid TAC value in config: it cannot be converted to integer.")
         return tac
 
 
