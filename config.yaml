@@ -45,7 +45,7 @@ options:
   tac:
     type: string
     default: "000001"
-    description: Tracking Area Code
+    description: Tracking Area Code. Hexadecimal value represented as a string.
   upf-ip-address:
     type: string
     default: "192.168.252.3"
