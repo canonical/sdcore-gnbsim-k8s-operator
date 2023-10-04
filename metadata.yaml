@@ -4,6 +4,9 @@ display-name: SD-Core 5G GNBSIM
 summary: A Charmed Operator for SD-Core's GNBSIM component.
 description: |
   A Charmed Operator for SD-Core's gNodeB simulator (GNBSIM) component.
+website: https://charmhub.io/sdcore-gnbsim
+source: https://github.com/canonical/sdcore-gnbsim-operator
+issues: https://github.com/canonical/sdcore-gnbsim-operator/issues
 
 containers:
   gnbsim:
