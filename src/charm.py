@@ -17,6 +17,7 @@ from charms.observability_libs.v1.kubernetes_service_patch import (  # type: ign
     KubernetesServicePatch,
 )
 from charms.sdcore_amf.v0.fiveg_n2 import N2Requires  # type: ignore[import]
+from charms.sdcore_gnbsim.v0.fiveg_gnb_identity import GnbIdentityProvides  # type: ignore[import]
 from jinja2 import Environment, FileSystemLoader
 from lightkube.models.core_v1 import ServicePort
 from lightkube.models.meta_v1 import ObjectMeta
@@ -33,6 +34,7 @@ CONFIG_FILE_NAME = "gnb.conf"
 GNB_INTERFACE_NAME = "gnb"
 GNB_NETWORK_ATTACHMENT_DEFINITION_NAME = "gnb-net"
 N2_RELATION_NAME = "fiveg-n2"
+GNB_IDENTITY_RELATION_NAME = "fiveg_gnb_identity"
 
 
 class NadConfigChangedEvent(EventBase):
@@ -77,12 +79,17 @@ class GNBSIMOperatorCharm(CharmBase):
             network_attachment_definitions_func=self._network_attachment_definitions_from_config,
             refresh_event=self.on.nad_config_changed,
         )
+        self._gnb_identity_provider = GnbIdentityProvides(self, GNB_IDENTITY_RELATION_NAME)
 
         self.framework.observe(self.on.config_changed, self._configure)
         self.framework.observe(self.on.gnbsim_pebble_ready, self._configure)
         self.framework.observe(self.on.start_simulation_action, self._on_start_simulation_action)
         self.framework.observe(self.on.fiveg_n2_relation_joined, self._configure)
         self.framework.observe(self._n2_requirer.on.n2_information_available, self._configure)
+        self.framework.observe(
+            self._gnb_identity_provider.on.fiveg_gnb_identity_request,
+            self._on_fiveg_gnb_identity_request,
+        )
 
     def _configure(self, event: EventBase) -> None:
         """Juju event handler.
@@ -134,6 +141,7 @@ class GNBSIMOperatorCharm(CharmBase):
             usim_key=self._get_usim_key_from_config(),  # type: ignore[arg-type]
         )
         self._write_config_file(content=content)
+        self._update_fiveg_gnb_identity_relation_data()
         self._create_upf_route()
         self.unit.status = ActiveStatus()
 
@@ -188,6 +196,34 @@ class GNBSIMOperatorCharm(CharmBase):
                 spec={"config": json.dumps(gnb_nad_config)},
             ),
         ]
+
+    def _on_fiveg_gnb_identity_request(self, event: EventBase) -> None:
+        """Handles 5G GNB Identity request events.
+
+        Args:
+            event: Juju event
+        """
+        if not self.unit.is_leader():
+            return
+        self._update_fiveg_gnb_identity_relation_data()
+
+    def _update_fiveg_gnb_identity_relation_data(self) -> None:
+        """Publishes GNB name and TAC in the `fiveg_gnb_identity` relation data bag."""
+        fiveg_gnb_identity_relations = self.model.relations.get(GNB_IDENTITY_RELATION_NAME)
+        if not fiveg_gnb_identity_relations:
+            logger.info("No %s relations found.", GNB_IDENTITY_RELATION_NAME)
+            return
+
+        tac = self._get_tac_as_int()
+        if not tac:
+            logger.error(
+                "TAC value cannot be published on the %s relation", GNB_IDENTITY_RELATION_NAME
+            )
+            return
+        for gnb_identity_relation in fiveg_gnb_identity_relations:
+            self._gnb_identity_provider.publish_gnb_identity_information(
+                relation_id=gnb_identity_relation.id, gnb_name=self._gnb_name, tac=tac
+            )
 
     def _get_gnb_ip_address_from_config(self) -> Optional[str]:
         return self.model.config.get("gnb-ip-address")
@@ -364,6 +400,28 @@ class GNBSIMOperatorCharm(CharmBase):
             bool: Whether the relation was created.
         """
         return bool(self.model.relations[relation_name])
+
+    @property
+    def _gnb_name(self) -> str:
+        """The gNB's name contains the model name and the app name.
+
+        Returns:
+            str: the gNB's name.
+        """
+        return f"{self.model.name}-gnbsim-{self.app.name}"
+
+    def _get_tac_as_int(self) -> Optional[int]:
+        """Convert the TAC value in the config to an integer.
+
+        Returns:
+            TAC as an integer. None if the config value is invalid.
+        """
+        tac = None
+        try:
+            tac = int(self.model.config.get("tac"), 16)  # type: ignore[arg-type]
+        except ValueError:
+            logger.error("Invalid TAC value in config: it cannot be converted to integer.")
+        return tac
 
 
 if __name__ == "__main__":  # pragma: nocover

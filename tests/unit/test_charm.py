@@ -3,7 +3,7 @@
 
 import json
 import unittest
-from unittest.mock import Mock, patch
+from unittest.mock import Mock, call, patch
 
 from ops import testing
 from ops.model import ActiveStatus, BlockedStatus, WaitingStatus
@@ -12,6 +12,7 @@ from ops.pebble import ChangeError, ExecError
 from charm import GNBSIMOperatorCharm
 
 MULTUS_LIB_PATH = "charms.kubernetes_charm_libraries.v0.multus"
+GNB_IDENTITY_LIB_PATH = "charms.sdcore_gnbsim.v0.fiveg_gnb_identity"
 
 
 def read_file(path: str) -> str:
@@ -397,3 +398,106 @@ class TestCharm(unittest.TestCase):
         config = json.loads(nad[0].spec["config"])
         self.assertEqual(config["master"], "gnb")
         self.assertEqual(config["type"], "macvlan")
+
+    @patch(f"{GNB_IDENTITY_LIB_PATH}.GnbIdentityProvides.publish_gnb_identity_information")
+    def test_given_fiveg_gnb_identity_relation_created_when_fiveg_gnb_identity_request_then_gnb_name_and_tac_are_published(  # noqa: E501
+        self, patched_publish_gnb_identity
+    ):
+        self.harness.set_leader(is_leader=True)
+        test_tac = "012"
+        test_tac_int = 18
+        expected_gnb_name = f"{self.namespace}-gnbsim-{self.harness.charm.app.name}"
+        self.harness.update_config(key_values={"tac": test_tac})
+        relation_id = self.harness.add_relation("fiveg_gnb_identity", "gnb_identity_requirer_app")
+        self.harness.add_relation_unit(relation_id, "gnb_identity_requirer_app/0")
+
+        patched_publish_gnb_identity.assert_called_once_with(
+            relation_id=relation_id, gnb_name=expected_gnb_name, tac=test_tac_int
+        )
+
+    @patch(f"{GNB_IDENTITY_LIB_PATH}.GnbIdentityProvides.publish_gnb_identity_information")
+    def test_given_no_tac_in_config_when_fiveg_gnb_identity_request_then_default_tac_is_published(
+        self, patched_publish_gnb_identity
+    ):
+        self.harness.set_leader(is_leader=True)
+        relation_id = self.harness.add_relation("fiveg_gnb_identity", "gnb_identity_requirer_app")
+        self.harness.add_relation_unit(relation_id, "gnb_identity_requirer_app/0")
+        expected_gnb_name = f"{self.namespace}-gnbsim-{self.harness.charm.app.name}"
+        default_tac_int = 1
+
+        patched_publish_gnb_identity.assert_called_once_with(
+            relation_id=relation_id, gnb_name=expected_gnb_name, tac=default_tac_int
+        )
+
+    @patch(f"{GNB_IDENTITY_LIB_PATH}.GnbIdentityProvides.publish_gnb_identity_information")
+    def test_given_tac_is_not_hexadecimal_when_fiveg_gnb_identity_request_then_information_is_not_published(  # noqa: E501
+        self, patched_publish_gnb_identity
+    ):
+        self.harness.set_leader(is_leader=True)
+        test_tac = "gg"
+        self.harness.update_config(key_values={"tac": test_tac})
+        relation_id = self.harness.add_relation("fiveg_gnb_identity", "gnb_identity_requirer_app")
+        self.harness.add_relation_unit(relation_id, "gnb_identity_requirer_app/0")
+
+        patched_publish_gnb_identity.assert_not_called()
+
+    @patch(f"{GNB_IDENTITY_LIB_PATH}.GnbIdentityProvides.publish_gnb_identity_information")
+    def tests_given_unit_is_not_leader_when_fiveg_gnb_identity_requests_then_information_is_not_published(  # noqa: E501
+        self, patched_publish_gnb_identity
+    ):
+        self.harness.update_config(key_values={"tac": "12345"})
+        relation_id = self.harness.add_relation("fiveg_gnb_identity", "gnb_identity_requirer_app")
+        self.harness.add_relation_unit(relation_id, "gnb_identity_requirer_app/0")
+
+        patched_publish_gnb_identity.assert_not_called()
+
+    @patch("ops.model.Container.push", new=Mock)
+    @patch(f"{MULTUS_LIB_PATH}.KubernetesMultusCharmLib.is_ready")
+    @patch("ops.model.Container.exec", new=Mock)
+    @patch("ops.model.Container.exists")
+    @patch(f"{GNB_IDENTITY_LIB_PATH}.GnbIdentityProvides.publish_gnb_identity_information")
+    def test_given_fiveg_gnb_identity_relation_exists_when_tac_config_changed_then_new_tac_is_published(  # noqa: E501
+        self,
+        patched_publish_gnb_identity,
+        patch_dir_exists,
+        patch_is_ready,
+    ):
+        self.harness.set_leader(is_leader=True)
+        patch_is_ready.return_value = True
+        patch_dir_exists.return_value = True
+        self.harness.set_can_connect(container="gnbsim", val=True)
+        self._n2_data_available()
+
+        relation_id = self.harness.add_relation("fiveg_gnb_identity", "gnb_identity_requirer_app")
+        self.harness.add_relation_unit(relation_id, "gnb_identity_requirer_app/0")
+        default_tac_int = 1
+        test_tac = "F"
+        test_tac_int = 15
+        expected_gnb_name = f"{self.namespace}-gnbsim-{self.harness.charm.app.name}"
+
+        expected_calls = [
+            call(relation_id=relation_id, gnb_name=expected_gnb_name, tac=default_tac_int),
+            call(relation_id=relation_id, gnb_name=expected_gnb_name, tac=test_tac_int),
+        ]
+        self.harness.update_config(key_values={"tac": test_tac})
+        patched_publish_gnb_identity.assert_has_calls(expected_calls)
+
+    @patch("ops.model.Container.push", new=Mock)
+    @patch(f"{MULTUS_LIB_PATH}.KubernetesMultusCharmLib.is_ready")
+    @patch("ops.model.Container.exec", new=Mock)
+    @patch("ops.model.Container.exists")
+    @patch(f"{GNB_IDENTITY_LIB_PATH}.GnbIdentityProvides.publish_gnb_identity_information")
+    def test_given_fiveg_gnb_identity_relation_not_created_does_not_publish_information(
+        self,
+        patched_publish_gnb_identity,
+        patch_dir_exists,
+        patch_is_ready,
+    ):
+        self.harness.set_leader(is_leader=True)
+        patch_is_ready.return_value = True
+        patch_dir_exists.return_value = True
+        self.harness.set_can_connect(container="gnbsim", val=True)
+        self._n2_data_available()
+        self.harness.update_config(key_values={"tac": "12345"})
+
+        patched_publish_gnb_identity.assert_not_called()
