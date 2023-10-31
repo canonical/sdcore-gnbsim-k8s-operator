@@ -46,11 +46,16 @@ options:
     type: string
     default: "000001"
     description: Tracking Area Code. Hexadecimal value represented as a string.
-  upf-ip-address:
+  user-plane-network:
     type: string
-    default: "192.168.252.3"
-    description: UPF IP address
-  upf-gateway:
+    default: "192.168.251.0/24"
+    description: User Plane Network
+  user-plane-ip-address:
+    type: string
+    default: "192.168.251.3"
+    description: IP address of the User Plane Network
+  user-plane-gateway:
     type: string
     default: "192.168.251.1"
-    description: Gateway to use to reach UPF
+    description: Gateway to use to reach the User Plane Network
+  

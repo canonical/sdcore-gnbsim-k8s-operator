@@ -33,6 +33,8 @@ provides:
 requires:
   fiveg-n2:
     interface: fiveg_n2
+  ip-router:
+    interface: ip_router_user_plane
 
 assumes:
   - k8s-api
