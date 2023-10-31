@@ -5,7 +5,6 @@ import json
 import unittest
 from unittest.mock import Mock, call, patch
 
-import yaml
 from ops import testing
 from ops.model import ActiveStatus, BlockedStatus, WaitingStatus
 from ops.pebble import ChangeError, ExecError
@@ -31,8 +30,9 @@ def read_file(path: str) -> str:
     return content
 
 
-def get_expected_config(upf_ip_address: str= "", upf_gateway: str= "") -> str:
+def get_expected_config(upf_ip_address: str = "", upf_gateway: str = "") -> str:
     """Reads the tests/unit/expected_config.yaml file.
+
     Replaces the the value of the UPF IP adress and the UPF gateway with the
     given arguments.
 
@@ -238,7 +238,7 @@ class TestCharm(unittest.TestCase):
     @patch(f"{MULTUS_LIB_PATH}.KubernetesMultusCharmLib.is_ready", Mock(return_value=True))
     @patch("ops.model.Container.exec")
     @patch("ops.model.Container.exists", Mock(return_value=True))
-    def test_given_ip_router_relation_when_config_changed_then_upf_route_is_created_and_config_pushed(
+    def test_given_ip_router_relation_when_config_changed_then_upf_route_is_created_and_config_pushed(  # noqa: E501
         self, patch_exec, patch_get_routing_table, patch_push
     ):
         upf_network = "192.168.252.0/24"
@@ -266,7 +266,7 @@ class TestCharm(unittest.TestCase):
     @patch(f"{MULTUS_LIB_PATH}.KubernetesMultusCharmLib.is_ready", Mock(return_value=True))
     @patch("ops.model.Container.exec")
     @patch("ops.model.Container.exists", Mock(return_value=True))
-    def test_given_ip_router_relation_created_but_empty_routing_table_then_upf_route_is_not_created(
+    def test_given_ip_router_relation_created_and_empty_routing_table_then_upf_route_is_not_created(  # noqa: E501
         self, patch_exec, patch_get_routing_table, patch_push
     ):
         patch_get_routing_table.return_value = {}
@@ -349,14 +349,12 @@ class TestCharm(unittest.TestCase):
     @patch(f"{IP_ROUTER_LIB_PATH}.RouterRequires.request_network")
     @patch(f"{MULTUS_LIB_PATH}.KubernetesMultusCharmLib.is_ready", Mock(return_value=True))
     @patch("ops.model.Container.exists", Mock(return_value=True))
-    def test_given_no_ip_router_relation_when_config_changed_then_ip_router_network_is_not_requested(
+    def test_given_no_ip_router_relation_when_config_changed_then_ip_router_network_is_not_requested(  # noqa: E501
         self, patch_request_network
     ):
         self.harness.set_can_connect(container="gnbsim", val=True)
         self._n2_data_available()
-
         self.harness.update_config(key_values={"user-plane-gateway": "1.1.1.1"})
-
         patch_request_network.assert_not_called()
 
     @patch("ops.model.Container.push")
@@ -375,10 +373,8 @@ class TestCharm(unittest.TestCase):
             {"network": upf_network, "gateway": upf_gateway},
             {"network": "192.168.251.0/24", "gateway": "192.168.251.1"},
         ]
-
         routing_table = {"ip_router_access": networks}
         patch_get_routing_table.return_value = routing_table
-
         self.harness.update_relation_data(
             relation_id=relation_id,
             app_or_unit="ip_router_provider_app",
