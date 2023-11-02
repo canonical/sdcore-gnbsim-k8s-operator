@@ -58,4 +58,12 @@ options:
     type: string
     default: "192.168.251.1"
     description: Gateway to use to reach the User Plane Network
+  upf-ip-address:
+    type: string
+    default: "192.168.252.3"
+    description: UPF IP address
+  upf-gateway:
+    type: string
+    default: "192.168.251.1"
+    description: Gateway to use to reach UPF
   

@@ -14,6 +14,8 @@ from charm import GNBSIMOperatorCharm
 MULTUS_LIB_PATH = "charms.kubernetes_charm_libraries.v0.multus"
 GNB_IDENTITY_LIB_PATH = "charms.sdcore_gnbsim.v0.fiveg_gnb_identity"
 IP_ROUTER_LIB_PATH = "charms.ip_router_interface.v0.ip_router_interface"
+DEFAULT_UPF_IP_ADDRESS = "192.168.252.3"
+DEFAULT_UPF_GATEWAY = "192.168.251.1"
 
 
 def read_file(path: str) -> str:
@@ -43,9 +45,11 @@ def get_expected_config(upf_ip_address: str = "", upf_gateway: str = "") -> str:
         str: content of the file with the replace values.
     """
     config_file_content = read_file("tests/unit/expected_config.yaml")
-    replaced_file_content = config_file_content.replace("192.168.252.3", upf_ip_address)
-    replaced_file_content = replaced_file_content.replace("192.168.251.1", upf_gateway)
-    return replaced_file_content
+    if upf_ip_address and upf_gateway:
+        replaced_file_content = config_file_content.replace(DEFAULT_UPF_IP_ADDRESS, upf_ip_address)
+        replaced_file_content = replaced_file_content.replace(DEFAULT_UPF_GATEWAY, upf_gateway)
+        return replaced_file_content
+    return config_file_content
 
 
 class TestCharm(unittest.TestCase):
@@ -84,9 +88,7 @@ class TestCharm(unittest.TestCase):
             },
         )
 
-    def test_given_default_config_when_config_changed_then_status_is_blocked(
-        self,
-    ):
+    def test_given_default_config_when_config_changed_then_status_is_blocked(self):
         self.harness.update_config(key_values={"usim-opc": ""})
 
         self.assertEqual(
@@ -94,9 +96,7 @@ class TestCharm(unittest.TestCase):
             BlockedStatus("Configurations are invalid: ['usim-opc']"),
         )
 
-    def test_given_cant_connect_to_workload_when_config_changed_then_status_is_waiting(
-        self,
-    ):
+    def test_given_cant_connect_to_workload_when_config_changed_then_status_is_waiting(self):
         self._create_n2_relation()
         self.harness.set_can_connect(container="gnbsim", val=False)
 
@@ -109,8 +109,7 @@ class TestCharm(unittest.TestCase):
 
     @patch("ops.model.Container.exists")
     def test_given_storage_not_attached_when_config_changed_then_status_is_waiting(
-        self,
-        patch_exists,
+        self, patch_exists
     ):
         patch_exists.return_value = False
         self.harness.set_can_connect(container="gnbsim", val=True)
@@ -126,9 +125,7 @@ class TestCharm(unittest.TestCase):
     @patch(f"{MULTUS_LIB_PATH}.KubernetesMultusCharmLib.is_ready")
     @patch("ops.model.Container.exists")
     def test_given_multus_not_ready_when_config_changed_then_status_is_waiting(
-        self,
-        patch_exists,
-        patch_is_ready,
+        self, patch_exists, patch_is_ready
     ):
         patch_exists.return_value = True
         patch_is_ready.return_value = False
@@ -142,9 +139,7 @@ class TestCharm(unittest.TestCase):
             WaitingStatus("Waiting for Multus to be ready"),
         )
 
-    def test_given_n2_relation_not_created_when_config_changed_then_status_is_blocked(
-        self,
-    ):
+    def test_given_n2_relation_not_created_when_config_changed_then_status_is_blocked(self):
         self.harness.update_config(key_values={})
 
         self.assertEqual(
@@ -157,10 +152,7 @@ class TestCharm(unittest.TestCase):
     @patch("ops.model.Container.exec", new=Mock)
     @patch("ops.model.Container.exists")
     def test_given_n2_information_not_available_when_config_changed_then_status_is_waiting(
-        self,
-        patch_dir_exists,
-        patch_is_ready,
-        patch_push,
+        self, patch_dir_exists, patch_is_ready, patch_push
     ):
         patch_is_ready.return_value = True
         patch_dir_exists.return_value = True
@@ -179,10 +171,7 @@ class TestCharm(unittest.TestCase):
     @patch("ops.model.Container.exec", new=Mock)
     @patch("ops.model.Container.exists")
     def test_given_default_config_and_n2_info_when_config_changed_then_config_is_written_to_workload(  # noqa: E501
-        self,
-        patch_dir_exists,
-        patch_is_ready,
-        patch_push,
+        self, patch_dir_exists, patch_is_ready, patch_push
     ):
         patch_is_ready.return_value = True
         patch_dir_exists.return_value = True
@@ -200,10 +189,7 @@ class TestCharm(unittest.TestCase):
     @patch("ops.model.Container.exec", new=Mock)
     @patch("ops.model.Container.exists")
     def test_given_default_config_and_n2_info_available_when_n2_relation_joined_then_config_is_written_to_workload(  # noqa: E501
-        self,
-        patch_dir_exists,
-        patch_is_ready,
-        patch_push,
+        self, patch_dir_exists, patch_is_ready, patch_push
     ):
         patch_is_ready.return_value = True
         patch_dir_exists.return_value = True
@@ -219,9 +205,7 @@ class TestCharm(unittest.TestCase):
     @patch("ops.model.Container.exec", new=Mock)
     @patch("ops.model.Container.exists")
     def test_given_default_config_when_config_changed_then_status_is_active(
-        self,
-        patch_dir_exists,
-        patch_is_ready,
+        self, patch_dir_exists, patch_is_ready
     ):
         patch_is_ready.return_value = True
         patch_dir_exists.return_value = True
@@ -266,7 +250,7 @@ class TestCharm(unittest.TestCase):
     @patch(f"{MULTUS_LIB_PATH}.KubernetesMultusCharmLib.is_ready", Mock(return_value=True))
     @patch("ops.model.Container.exec")
     @patch("ops.model.Container.exists", Mock(return_value=True))
-    def test_given_ip_router_relation_created_and_empty_routing_table_then_upf_route_is_not_created(  # noqa: E501
+    def test_given_ip_router_relation_created_and_empty_routing_table_then_upf_route_uses_config_values(  # noqa: E501
         self, patch_exec, patch_get_routing_table, patch_push
     ):
         patch_get_routing_table.return_value = {}
@@ -276,7 +260,10 @@ class TestCharm(unittest.TestCase):
 
         self.harness.update_config(key_values={})
 
-        patch_exec.assert_not_called()
+        patch_exec.assert_called_with(
+            command=["ip", "route", "replace", DEFAULT_UPF_IP_ADDRESS, "via", DEFAULT_UPF_GATEWAY],
+            timeout=300,
+        )
         expected_config = get_expected_config()
         patch_push.assert_called_with(source=expected_config, path="/etc/gnbsim/gnb.conf")
 
@@ -285,7 +272,7 @@ class TestCharm(unittest.TestCase):
     @patch(f"{MULTUS_LIB_PATH}.KubernetesMultusCharmLib.is_ready", Mock(return_value=True))
     @patch("ops.model.Container.exec")
     @patch("ops.model.Container.exists", Mock(return_value=True))
-    def test_given_ip_router_relation_created_but_no_access_network_then_upf_route_is_not_created(
+    def test_given_ip_router_relation_created_but_no_access_network_then_upf_route_uses_config_values(
         self, patch_exec, patch_get_routing_table, patch_push
     ):
         networks = [{"network": "1.1.1.1", "gateway": "2.2.2.2"}]
@@ -297,7 +284,10 @@ class TestCharm(unittest.TestCase):
 
         self.harness.update_config(key_values={})
 
-        patch_exec.assert_not_called()
+        patch_exec.assert_called_with(
+            command=["ip", "route", "replace", DEFAULT_UPF_IP_ADDRESS, "via", DEFAULT_UPF_GATEWAY],
+            timeout=300,
+        )
         expected_config = get_expected_config()
         patch_push.assert_called_with(source=expected_config, path="/etc/gnbsim/gnb.conf")
 
@@ -306,7 +296,7 @@ class TestCharm(unittest.TestCase):
     @patch(f"{MULTUS_LIB_PATH}.KubernetesMultusCharmLib.is_ready", Mock(return_value=True))
     @patch("ops.model.Container.exec")
     @patch("ops.model.Container.exists", Mock(return_value=True))
-    def test_given_no_ip_router_relation_when_config_changed_then_upf_route_is_not_created(
+    def test_given_no_ip_router_relation_when_config_changed_then_upf_route_uses_config_values(
         self, patch_exec, patch_get_routing_table, patch_push
     ):
         self.harness.set_can_connect(container="gnbsim", val=True)
@@ -314,7 +304,10 @@ class TestCharm(unittest.TestCase):
 
         self.harness.update_config(key_values={})
         patch_get_routing_table.assert_not_called()
-        patch_exec.assert_not_called()
+        patch_exec.assert_called_with(
+            command=["ip", "route", "replace", DEFAULT_UPF_IP_ADDRESS, "via", DEFAULT_UPF_GATEWAY],
+            timeout=300,
+        )
         expected_config = get_expected_config()
         patch_push.assert_called_with(source=expected_config, path="/etc/gnbsim/gnb.conf")
 
@@ -323,8 +316,9 @@ class TestCharm(unittest.TestCase):
     @patch(f"{IP_ROUTER_LIB_PATH}.RouterRequires.get_routing_table")
     @patch(f"{MULTUS_LIB_PATH}.KubernetesMultusCharmLib.is_ready", Mock(return_value=True))
     @patch("ops.model.Container.exists", Mock(return_value=True))
+    @patch("ops.model.Container.exec")
     def test_given_ip_router_relation_when_config_changed_then_ip_router_network_is_requested(
-        self, patch_get_routing_table, patch_request_network
+        self, patch_exec, patch_get_routing_table, patch_request_network
     ):
         user_plane_network = "1.1.1.1"
         user_plane_gateway = "2.2.2.2"
@@ -349,8 +343,9 @@ class TestCharm(unittest.TestCase):
     @patch(f"{IP_ROUTER_LIB_PATH}.RouterRequires.request_network")
     @patch(f"{MULTUS_LIB_PATH}.KubernetesMultusCharmLib.is_ready", Mock(return_value=True))
     @patch("ops.model.Container.exists", Mock(return_value=True))
+    @patch("ops.model.Container.exec")
     def test_given_no_ip_router_relation_when_config_changed_then_ip_router_network_is_not_requested(  # noqa: E501
-        self, patch_request_network
+        self, patch_exec, patch_request_network
     ):
         self.harness.set_can_connect(container="gnbsim", val=True)
         self._n2_data_available()
@@ -420,8 +415,7 @@ class TestCharm(unittest.TestCase):
 
     @patch("ops.model.Container.exists")
     def test_given_config_file_not_written_when_start_simulation_action_then_event_fails(
-        self,
-        patch_exists,
+        self, patch_exists
     ):
         event = Mock()
         patch_exists.return_value = False
@@ -619,10 +613,7 @@ class TestCharm(unittest.TestCase):
     @patch("ops.model.Container.exists")
     @patch(f"{GNB_IDENTITY_LIB_PATH}.GnbIdentityProvides.publish_gnb_identity_information")
     def test_given_fiveg_gnb_identity_relation_exists_when_tac_config_changed_then_new_tac_is_published(  # noqa: E501
-        self,
-        patched_publish_gnb_identity,
-        patch_dir_exists,
-        patch_is_ready,
+        self, patched_publish_gnb_identity, patch_dir_exists, patch_is_ready
     ):
         self.harness.set_leader(is_leader=True)
         patch_is_ready.return_value = True
@@ -650,10 +641,7 @@ class TestCharm(unittest.TestCase):
     @patch("ops.model.Container.exists")
     @patch(f"{GNB_IDENTITY_LIB_PATH}.GnbIdentityProvides.publish_gnb_identity_information")
     def test_given_fiveg_gnb_identity_relation_not_created_does_not_publish_information(
-        self,
-        patched_publish_gnb_identity,
-        patch_dir_exists,
-        patch_is_ready,
+        self, patched_publish_gnb_identity, patch_dir_exists, patch_is_ready
     ):
         self.harness.set_leader(is_leader=True)
         patch_is_ready.return_value = True

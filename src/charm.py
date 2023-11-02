@@ -8,7 +8,7 @@ import json
 import logging
 from typing import List, Optional, Tuple
 
-from charms.ip_router_interface.v0.ip_router_interface import (
+from charms.ip_router_interface.v0.ip_router_interface import (  # type: ignore[import]
     Network,
     RouterRequires,
     RoutingTableUpdatedEvent,
@@ -136,7 +136,7 @@ class GNBSIMOperatorCharm(CharmBase):
             return
 
         self._request_user_plane_network_to_ip_router()
-        upf_ip_address, upf_gateway = self._get_upf_ip_address_and_gateway_from_ip_router()
+        upf_ip_address, upf_gateway = self._get_upf_ip_address_and_gateway()
         self._set_config_in_workload(upf_ip_address, upf_gateway)
         self._update_fiveg_gnb_identity_relation_data()
         self.unit.status = ActiveStatus()
@@ -244,16 +244,19 @@ class GNBSIMOperatorCharm(CharmBase):
         }
         return [user_plane_network]
 
-    def _get_upf_ip_address_and_gateway_from_ip_router(self) -> Tuple[str, str]:
+    def _get_upf_ip_address_and_gateway(self) -> Tuple[str, str]:
+        """Gets the UPF IP address and gateway from the ip_router relation
+
+        if it exists and if it contais the access network information.
+        Otherwise it returns the values set on the charm config.
+        """
         ip_router_relations = self.model.relations.get(IP_ROUTER_RELATION_NAME)
-        if not ip_router_relations:
-            logger.info("No %s relations found.", IP_ROUTER_RELATION_NAME)
-            return ("", "")
-        routing_table = self._router_requirer.get_routing_table()
-        if networks := routing_table.get(ACCESS_NETWORK_NAME, []):
-            network = networks[0]
-            return network["network"], network["gateway"]
-        return ("", "")
+        if ip_router_relations:
+            routing_table = self._router_requirer.get_routing_table()
+            if networks := routing_table.get(ACCESS_NETWORK_NAME, []):
+                network = networks[0]
+                return network["network"], network["gateway"]
+        return (self._get_upf_ip_address_from_config(), self._get_upf_gateway_from_config())
 
     def _on_fiveg_gnb_identity_request(self, event: EventBase) -> None:
         """Handles 5G GNB Identity request events.
@@ -318,6 +321,12 @@ class GNBSIMOperatorCharm(CharmBase):
 
     def _get_user_plane_gateway_from_config(self) -> Optional[str]:
         return self.model.config.get("user-plane-gateway")
+
+    def _get_upf_gateway_from_config(self) -> Optional[str]:
+        return self.model.config.get("upf-gateway")
+
+    def _get_upf_ip_address_from_config(self) -> Optional[str]:
+        return self.model.config.get("upf-ip-address")
 
     def _get_usim_key_from_config(self) -> Optional[str]:
         return self.model.config.get("usim-key")
@@ -433,16 +442,6 @@ class GNBSIMOperatorCharm(CharmBase):
 
     def _create_upf_route(self, upf_ip_address: str, upf_gateway: str) -> None:
         """Creates route to reach the UPF."""
-        ip_router_relations = self.model.relations.get(IP_ROUTER_RELATION_NAME)
-        if not ip_router_relations:
-            logger.info("No %s relations found.", IP_ROUTER_RELATION_NAME)
-            return
-        if not upf_ip_address:
-            logger.warning("UPF IP address is missing.")
-            return
-        if not upf_gateway:
-            logger.warning("UPF gateway is missing.")
-            return
         self._exec_command_in_workload(
             command=f"ip route replace {upf_ip_address} via {upf_gateway}"
         )
