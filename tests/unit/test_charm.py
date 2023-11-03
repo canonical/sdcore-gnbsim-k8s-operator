@@ -222,14 +222,14 @@ class TestCharm(unittest.TestCase):
     @patch(f"{MULTUS_LIB_PATH}.KubernetesMultusCharmLib.is_ready", Mock(return_value=True))
     @patch("ops.model.Container.exec")
     @patch("ops.model.Container.exists", Mock(return_value=True))
-    def test_given_ip_router_relation_when_config_changed_then_upf_route_is_created_and_config_pushed(  # noqa: E501
+    def test_given_ip_router_relation_when_config_changed_then_upf_config_is_taken_from_relation(  # noqa: E501
         self, patch_exec, patch_get_routing_table, patch_push
     ):
-        upf_network = "192.168.252.0/24"
-        upf_gateway = "192.168.252.1"
+        upf_network = "1.1.1.1/24"
+        upf_gateway = "2.2.2.2"
         networks = [
             {"network": upf_network, "gateway": upf_gateway},
-            {"network": "192.168.251.0/24", "gateway": "192.168.251.1"},
+            {"network": "3.3.3.3/24", "gateway": "4.4.4.4"},
         ]
         routing_table = {"ip_router_access": networks}
         patch_get_routing_table.return_value = routing_table
@@ -250,7 +250,7 @@ class TestCharm(unittest.TestCase):
     @patch(f"{MULTUS_LIB_PATH}.KubernetesMultusCharmLib.is_ready", Mock(return_value=True))
     @patch("ops.model.Container.exec")
     @patch("ops.model.Container.exists", Mock(return_value=True))
-    def test_given_ip_router_relation_created_and_empty_routing_table_then_upf_route_uses_config_values(  # noqa: E501
+    def test_given_ip_router_relation_created_and_empty_routing_table_then_upf_config_uses_config_values(  # noqa: E501
         self, patch_exec, patch_get_routing_table, patch_push
     ):
         patch_get_routing_table.return_value = {}
@@ -272,7 +272,7 @@ class TestCharm(unittest.TestCase):
     @patch(f"{MULTUS_LIB_PATH}.KubernetesMultusCharmLib.is_ready", Mock(return_value=True))
     @patch("ops.model.Container.exec")
     @patch("ops.model.Container.exists", Mock(return_value=True))
-    def test_given_ip_router_relation_created_but_no_access_network_then_upf_route_uses_config_values(
+    def test_given_no_access_network_when_config_changed_then_upf_config_uses_config_values(
         self, patch_exec, patch_get_routing_table, patch_push
     ):
         networks = [{"network": "1.1.1.1", "gateway": "2.2.2.2"}]
@@ -313,19 +313,17 @@ class TestCharm(unittest.TestCase):
 
     @patch("ops.model.Container.push", new=Mock)
     @patch(f"{IP_ROUTER_LIB_PATH}.RouterRequires.request_network")
-    @patch(f"{IP_ROUTER_LIB_PATH}.RouterRequires.get_routing_table")
+    @patch(f"{IP_ROUTER_LIB_PATH}.RouterRequires.get_routing_table", Mock(return_value={}))
     @patch(f"{MULTUS_LIB_PATH}.KubernetesMultusCharmLib.is_ready", Mock(return_value=True))
     @patch("ops.model.Container.exists", Mock(return_value=True))
     @patch("ops.model.Container.exec")
     def test_given_ip_router_relation_when_config_changed_then_ip_router_network_is_requested(
-        self, patch_exec, patch_get_routing_table, patch_request_network
+        self, _, patch_request_network
     ):
         user_plane_network = "1.1.1.1"
         user_plane_gateway = "2.2.2.2"
-
         self.harness.set_can_connect(container="gnbsim", val=True)
         self.harness.add_relation("ip-router", "ip_router_provider_app")
-        patch_get_routing_table.return_value = {}
         self._n2_data_available()
 
         self.harness.update_config(
@@ -341,11 +339,34 @@ class TestCharm(unittest.TestCase):
 
     @patch("ops.model.Container.push", new=Mock)
     @patch(f"{IP_ROUTER_LIB_PATH}.RouterRequires.request_network")
+    @patch(f"{IP_ROUTER_LIB_PATH}.RouterRequires.get_routing_table", Mock(return_value={}))
+    @patch(f"{MULTUS_LIB_PATH}.KubernetesMultusCharmLib.is_ready", Mock(return_value=True))
+    @patch("ops.model.Container.exists", Mock(return_value=True))
+    @patch("ops.model.Container.exec")
+    def test_given_default_user_plane_network_when_config_changed_then_ip_router_network_is_requested(  # noqa: E501
+        self, _, patch_request_network
+    ):
+        self.harness.set_can_connect(container="gnbsim", val=True)
+        self.harness.add_relation("ip-router", "ip_router_provider_app")
+        self._n2_data_available()
+
+        self.harness.update_config(key_values={})
+        default_user_plane_netowork = "192.168.251.0/24"
+        default_user_plane_gateway = "192.168.251.1"
+        networks = [
+            {"network": default_user_plane_netowork, "gateway": default_user_plane_gateway}
+        ]
+        patch_request_network.assert_called_with(
+            requested_networks=networks, custom_network_name="ip-router"
+        )
+
+    @patch("ops.model.Container.push", new=Mock)
+    @patch(f"{IP_ROUTER_LIB_PATH}.RouterRequires.request_network")
     @patch(f"{MULTUS_LIB_PATH}.KubernetesMultusCharmLib.is_ready", Mock(return_value=True))
     @patch("ops.model.Container.exists", Mock(return_value=True))
     @patch("ops.model.Container.exec")
     def test_given_no_ip_router_relation_when_config_changed_then_ip_router_network_is_not_requested(  # noqa: E501
-        self, patch_exec, patch_request_network
+        self, _, patch_request_network
     ):
         self.harness.set_can_connect(container="gnbsim", val=True)
         self._n2_data_available()
@@ -353,29 +374,27 @@ class TestCharm(unittest.TestCase):
         patch_request_network.assert_not_called()
 
     @patch("ops.model.Container.push")
-    @patch(f"{IP_ROUTER_LIB_PATH}.RouterRequires.get_routing_table")
+    @patch(f"{IP_ROUTER_LIB_PATH}.RouterRequires.get_routing_table", Mock(return_value={}))
     @patch(f"{MULTUS_LIB_PATH}.KubernetesMultusCharmLib.is_ready", Mock(return_value=True))
     @patch("ops.model.Container.exec")
     @patch("ops.model.Container.exists", Mock(return_value=True))
-    def test_given_ip_router_relation_when_routing_table_is_updated_then_config_is_updated(
-        self, patch_exec, patch_get_routing_table, patch_push
+    def test_given_ip_router_relation_when_routing_table_is_updated_then_upf_config_comes_from_relation(  # noqa: E501
+        self, patch_exec, patch_push
     ):
         upf_network = "1.1.1.1"
         upf_gateway = "2.2.2.2"
         self.harness.set_can_connect(container="gnbsim", val=True)
-        relation_id = self.harness.add_relation("ip-router", "ip_router_provider_app")
+        self.harness.add_relation("ip-router", "ip_router_provider_app")
+        self._n2_data_available()
         networks = [
             {"network": upf_network, "gateway": upf_gateway},
             {"network": "192.168.251.0/24", "gateway": "192.168.251.1"},
         ]
         routing_table = {"ip_router_access": networks}
-        patch_get_routing_table.return_value = routing_table
-        self.harness.update_relation_data(
-            relation_id=relation_id,
-            app_or_unit="ip_router_provider_app",
-            key_values={"networks": json.dumps(routing_table)},
-        )
-        self._n2_data_available()
+
+        event = Mock()
+        event.routing_table = {"networks": routing_table}
+        self.harness.charm._update_upf_config(event=event)
 
         patch_exec.assert_called_with(
             command=["ip", "route", "replace", upf_network, "via", upf_gateway],
@@ -385,23 +404,75 @@ class TestCharm(unittest.TestCase):
         patch_push.assert_called_with(source=expected_config, path="/etc/gnbsim/gnb.conf")
 
     @patch("ops.model.Container.push")
+    @patch(f"{IP_ROUTER_LIB_PATH}.RouterRequires.get_routing_table", Mock(return_value={}))
+    @patch(f"{MULTUS_LIB_PATH}.KubernetesMultusCharmLib.is_ready", Mock(return_value=True))
+    @patch("ops.model.Container.exec")
+    @patch("ops.model.Container.exists", Mock(return_value=True))
+    def test_given_no_ip_router_relation_when_routing_table_is_updated_event_then_new_upf_config_is_not_used(  # noqa: E501
+        self, patch_exec, patch_push
+    ):
+        upf_network = "1.1.1.1"
+        upf_gateway = "2.2.2.2"
+        self.harness.set_can_connect(container="gnbsim", val=True)
+        self._n2_data_available()
+        networks = [{"network": upf_network, "gateway": upf_gateway}]
+        routing_table = {"ip_router_access": networks}
+
+        event = Mock()
+        event.routing_table = {"networks": routing_table}
+        self.harness.charm._update_upf_config(event=event)
+
+        self.assertNotIn(upf_network, patch_exec.call_args.kwargs["command"])
+        self.assertNotIn(upf_gateway, patch_exec.call_args.kwargs["command"])
+        self.assertNotIn(upf_network, patch_push.call_args.kwargs["source"])
+        self.assertNotIn(upf_gateway, patch_push.call_args.kwargs["source"])
+
+    @patch("ops.model.Container.push")
+    @patch(f"{IP_ROUTER_LIB_PATH}.RouterRequires.get_routing_table", Mock(return_value={}))
+    @patch(f"{MULTUS_LIB_PATH}.KubernetesMultusCharmLib.is_ready", Mock(return_value=True))
+    @patch("ops.model.Container.exec")
+    @patch("ops.model.Container.exists", Mock(return_value=True))
+    def test_given_empty_routing_table_when_routing_table_is_updated_event_then_default_upf_config_is_set(  # noqa: E501
+        self, patch_exec, patch_push
+    ):
+        self.harness.set_can_connect(container="gnbsim", val=True)
+        self.harness.add_relation("ip-router", "ip_router_provider_app")
+        self._n2_data_available()
+
+        event = Mock()
+        event.routing_table = {"networks": {}}
+        self.harness.charm._update_upf_config(event=event)
+
+        patch_exec.assert_called_with(
+            command=["ip", "route", "replace", DEFAULT_UPF_IP_ADDRESS, "via", DEFAULT_UPF_GATEWAY],
+            timeout=300,
+        )
+        expected_config = get_expected_config()
+        patch_push.assert_called_with(source=expected_config, path="/etc/gnbsim/gnb.conf")
+
+    @patch("ops.model.Container.push")
     @patch(f"{IP_ROUTER_LIB_PATH}.RouterRequires.get_routing_table")
     @patch(f"{MULTUS_LIB_PATH}.KubernetesMultusCharmLib.is_ready", Mock(return_value=True))
     @patch("ops.model.Container.exec")
     @patch("ops.model.Container.exists", Mock(return_value=True))
-    def test_given_empty_routing_table_when_routing_table_is_updated_then_config_is_not_updated(
+    def test_given_no_access_network_when_routing_table_is_updated_event_then_default_upf_config_is_set(  # noqa: E501
         self, patch_exec, patch_get_routing_table, patch_push
     ):
         self.harness.set_can_connect(container="gnbsim", val=True)
-        relation_id = self.harness.add_relation("ip-router", "ip_router_provider_app")
-        patch_get_routing_table.return_value = {}
-        self.harness.update_relation_data(
-            relation_id=relation_id,
-            app_or_unit="ip_router_provider_app",
-            key_values={"networks": json.dumps({})},
-        )
+        self.harness.add_relation("ip-router", "ip_router_provider_app")
         self._n2_data_available()
-        patch_exec.assert_not_called()
+        networks = [{"network": "192.168.0.0/24", "gateway": "192.168.0.1"}]
+        routing_table = {"some_network": networks}
+        patch_get_routing_table.return_value = routing_table
+
+        event = Mock()
+        event.routing_table = {"networks": routing_table}
+        self.harness.charm._update_upf_config(event=event)
+
+        patch_exec.assert_called_with(
+            command=["ip", "route", "replace", DEFAULT_UPF_IP_ADDRESS, "via", DEFAULT_UPF_GATEWAY],
+            timeout=300,
+        )
         expected_config = get_expected_config()
         patch_push.assert_called_with(source=expected_config, path="/etc/gnbsim/gnb.conf")
 
