@@ -137,12 +137,12 @@ class GNBSIMOperatorCharm(CharmBase):
             return
 
         self._request_user_plane_network_to_ip_router()
-        upf_ip_address, upf_gateway = self._get_upf_network_config()
-        self._set_config_in_workload(upf_ip_address, upf_gateway)
+        upf_ip_address = self._get_upf_network_config()
+        self._set_config_in_workload(upf_ip_address)
         self._update_fiveg_gnb_identity_relation_data()
         self.unit.status = ActiveStatus()
 
-    def _set_config_in_workload(self, upf_ip_address: str, upf_gateway: str) -> None:
+    def _set_config_in_workload(self, upf_ip_address: Optional[str]) -> None:
         """Create the configuration file and push it to the container.
 
         Create UPF route in container.
@@ -159,13 +159,13 @@ class GNBSIMOperatorCharm(CharmBase):
             usim_sequence_number=self._get_usim_sequence_number_from_config(),  # type: ignore[arg-type]  # noqa: E501
             sst=self._get_sst_from_config(),  # type: ignore[arg-type]
             tac=self._get_tac_from_config(),  # type: ignore[arg-type]
-            upf_gateway=upf_gateway,
-            upf_ip_address=upf_ip_address,
+            upf_gateway=self._get_user_plane_gateway_from_config(),  # type: ignore[arg-type]
+            upf_ip_address=upf_ip_address,  # type: ignore[arg-type]
             usim_opc=self._get_usim_opc_from_config(),  # type: ignore[arg-type]
             usim_key=self._get_usim_key_from_config(),  # type: ignore[arg-type]
         )
         self._write_config_file(content=content)
-        self._create_upf_route(upf_ip_address, upf_gateway)
+        self._create_upf_route(upf_ip_address)
 
     def _on_start_simulation_action(self, event: ActionEvent) -> None:
         """Runs gnbsim simulation leveraging configuration file."""
@@ -236,16 +236,17 @@ class GNBSIMOperatorCharm(CharmBase):
         }
         return [user_plane_network]
 
-    def _get_upf_network_config(self) -> Tuple[str, str]:
-        """Returns the UPF IP address and gateway.
+    def _get_upf_network_config(self) -> Optional[str]:
+        """Returns the UPF IP address.
 
-        From the ip_router relation if it exists and if it contais the access network information.
-        Otherwise it returns the values set on the charm config.
+        From the ip_router_user_plane relation if it exists and if it contais
+        the access network information.
+        Otherwise, it returns the value set on the charm config.
         """
         if self.model.relations.get(IP_ROUTER_RELATION_NAME):
             routing_table = self._router_requirer.get_routing_table()
-            return self._get_upf_network_config_from_routing_table(routing_table)
-        return (self._get_upf_ip_address_from_config(), self._get_upf_gateway_from_config())  # type: ignore[return-value]  # noqa: E501
+            return self._get_upf_ip_address_from_routing_table(routing_table)
+        return self._get_upf_ip_address_from_config()
 
     def _update_upf_network_config(self, event: RoutingTableUpdatedEvent) -> None:
         ip_router_relations = self.model.relations.get(IP_ROUTER_RELATION_NAME)
@@ -253,23 +254,18 @@ class GNBSIMOperatorCharm(CharmBase):
             logger.info("No %s relations found.", IP_ROUTER_RELATION_NAME)
             return
         routing_table = event.routing_table.get("networks", {})
-        upf_ip_address, upf_gateway = self._get_upf_network_config_from_routing_table(
-            routing_table
-        )
-        self._set_config_in_workload(upf_ip_address, upf_gateway)
+        upf_ip_address = self._get_upf_ip_address_from_routing_table(routing_table)
+        self._set_config_in_workload(upf_ip_address)
 
-    def _get_upf_network_config_from_routing_table(
-        self, routing_table: RoutingTable
-    ) -> Tuple[str, str]:
-        """Returns a the UPF IP address and gateway.
+    def _get_upf_ip_address_from_routing_table(self, routing_table: RoutingTable) -> Optional[str]:
+        """Returns a the UPF IP address.
 
-        If the access network exists in the routing table.
-        It returns the config values otherwise.
+        If the access network exists in the routing table, it returns its gateway.
+        Otherwise, it returns the config values.
         """
         if networks := routing_table.get(ACCESS_NETWORK_NAME, []):
-            network = networks[0]
-            return (network["network"], network["gateway"])
-        return (self._get_upf_ip_address_from_config(), self._get_upf_gateway_from_config())  # type: ignore[return-value]  # noqa: E501
+            return networks[0]["gateway"]
+        return self._get_upf_ip_address_from_config()
 
     def _on_fiveg_gnb_identity_request(self, event: EventBase) -> None:
         """Handles 5G GNB Identity request events.
@@ -334,9 +330,6 @@ class GNBSIMOperatorCharm(CharmBase):
 
     def _get_user_plane_gateway_from_config(self) -> Optional[str]:
         return self.model.config.get("user-plane-gateway")
-
-    def _get_upf_gateway_from_config(self) -> Optional[str]:
-        return self.model.config.get("upf-gateway")
 
     def _get_upf_ip_address_from_config(self) -> Optional[str]:
         return self.model.config.get("upf-ip-address")
@@ -453,10 +446,11 @@ class GNBSIMOperatorCharm(CharmBase):
             invalid_configs.append("usim-sequence-number")
         return invalid_configs
 
-    def _create_upf_route(self, upf_ip_address: str, upf_gateway: str) -> None:
+    def _create_upf_route(self, upf_ip_address: Optional[str]) -> None:
         """Creates route to reach the UPF."""
+        user_plane_gateway = self._get_user_plane_gateway_from_config()
         self._exec_command_in_workload(
-            command=f"ip route replace {upf_ip_address} via {upf_gateway}"
+            command=f"ip route replace {upf_ip_address} via {user_plane_gateway}"
         )
         logger.info("UPF route created")
 
