@@ -11,6 +11,7 @@ from typing import List, Optional, Tuple
 from charms.ip_router_interface.v0.ip_router_interface import (  # type: ignore[import]
     Network,
     RouterRequires,
+    RoutingTable,
     RoutingTableUpdatedEvent,
 )
 from charms.kubernetes_charm_libraries.v0.multus import (  # type: ignore[import]
@@ -95,7 +96,7 @@ class GNBSIMOperatorCharm(CharmBase):
         self.framework.observe(self.on.fiveg_n2_relation_joined, self._configure)
         self.framework.observe(self.on[IP_ROUTER_RELATION_NAME].relation_joined, self._configure)
         self.framework.observe(
-            self._router_requirer.on.routing_table_updated, self._update_upf_config
+            self._router_requirer.on.routing_table_updated, self._update_upf_network_config
         )
         self.framework.observe(self._n2_requirer.on.n2_information_available, self._configure)
         self.framework.observe(
@@ -136,7 +137,7 @@ class GNBSIMOperatorCharm(CharmBase):
             return
 
         self._request_user_plane_network_to_ip_router()
-        upf_ip_address, upf_gateway = self._get_upf_ip_address_and_gateway()
+        upf_ip_address, upf_gateway = self._get_upf_network_config()
         self._set_config_in_workload(upf_ip_address, upf_gateway)
         self._update_fiveg_gnb_identity_relation_data()
         self.unit.status = ActiveStatus()
@@ -235,34 +236,40 @@ class GNBSIMOperatorCharm(CharmBase):
         }
         return [user_plane_network]
 
-    def _get_upf_ip_address_and_gateway(self) -> Tuple[str, str]:
-        """Gets the UPF IP address and gateway.
+    def _get_upf_network_config(self) -> Tuple[str, str]:
+        """Returns the UPF IP address and gateway.
 
         From the ip_router relation if it exists and if it contais the access network information.
         Otherwise it returns the values set on the charm config.
         """
-        ip_router_relations = self.model.relations.get(IP_ROUTER_RELATION_NAME)
-        if ip_router_relations:
+        if self.model.relations.get(IP_ROUTER_RELATION_NAME):
             routing_table = self._router_requirer.get_routing_table()
-            return self._get_upf_ip_address_and_gateway_from_routing_table(routing_table)
-        return (self._get_upf_ip_address_from_config(), self._get_upf_gateway_from_config())
+            return self._get_upf_network_config_from_routing_table(routing_table)
+        return (self._get_upf_ip_address_from_config(), self._get_upf_gateway_from_config())  # type: ignore[return-value]  # noqa: E501
 
-    def _update_upf_config(self, event: RoutingTableUpdatedEvent) -> None:
+    def _update_upf_network_config(self, event: RoutingTableUpdatedEvent) -> None:
         ip_router_relations = self.model.relations.get(IP_ROUTER_RELATION_NAME)
         if not ip_router_relations:
             logger.info("No %s relations found.", IP_ROUTER_RELATION_NAME)
             return
         routing_table = event.routing_table.get("networks", {})
-        upf_ip_address, upf_gateway = self._get_upf_ip_address_and_gateway_from_routing_table(
+        upf_ip_address, upf_gateway = self._get_upf_network_config_from_routing_table(
             routing_table
         )
         self._set_config_in_workload(upf_ip_address, upf_gateway)
 
-    def _get_upf_ip_address_and_gateway_from_routing_table(self, routing_table) -> Tuple[str, str]:
+    def _get_upf_network_config_from_routing_table(
+        self, routing_table: RoutingTable
+    ) -> Tuple[str, str]:
+        """Returns a the UPF IP address and gateway.
+
+        If the access network exists in the routing table.
+        It returns the config values otherwise.
+        """
         if networks := routing_table.get(ACCESS_NETWORK_NAME, []):
             network = networks[0]
             return (network["network"], network["gateway"])
-        return (self._get_upf_ip_address_from_config(), self._get_upf_gateway_from_config())
+        return (self._get_upf_ip_address_from_config(), self._get_upf_gateway_from_config())  # type: ignore[return-value]  # noqa: E501
 
     def _on_fiveg_gnb_identity_request(self, event: EventBase) -> None:
         """Handles 5G GNB Identity request events.

@@ -36,7 +36,7 @@ def get_expected_config(upf_ip_address: str = "", upf_gateway: str = "") -> str:
     """Reads the tests/unit/expected_config.yaml file.
 
     Replaces the the value of the UPF IP adress and the UPF gateway with the
-    given arguments.
+    given arguments. If the argument are empty string, they are not replaced
 
     Args:
         upf_ip_address: new UPF IP address to use in config
@@ -45,10 +45,10 @@ def get_expected_config(upf_ip_address: str = "", upf_gateway: str = "") -> str:
         str: content of the file with the replace values.
     """
     config_file_content = read_file("tests/unit/expected_config.yaml")
-    if upf_ip_address and upf_gateway:
-        replaced_file_content = config_file_content.replace(DEFAULT_UPF_IP_ADDRESS, upf_ip_address)
-        replaced_file_content = replaced_file_content.replace(DEFAULT_UPF_GATEWAY, upf_gateway)
-        return replaced_file_content
+    if upf_ip_address:
+        config_file_content = config_file_content.replace(DEFAULT_UPF_IP_ADDRESS, upf_ip_address)
+    if upf_gateway:
+        config_file_content = config_file_content.replace(DEFAULT_UPF_GATEWAY, upf_gateway)
     return config_file_content
 
 
@@ -394,7 +394,7 @@ class TestCharm(unittest.TestCase):
 
         event = Mock()
         event.routing_table = {"networks": routing_table}
-        self.harness.charm._update_upf_config(event=event)
+        self.harness.charm._update_upf_network_config(event=event)
 
         patch_exec.assert_called_with(
             command=["ip", "route", "replace", upf_network, "via", upf_gateway],
@@ -420,7 +420,7 @@ class TestCharm(unittest.TestCase):
 
         event = Mock()
         event.routing_table = {"networks": routing_table}
-        self.harness.charm._update_upf_config(event=event)
+        self.harness.charm._update_upf_network_config(event=event)
 
         self.assertNotIn(upf_network, patch_exec.call_args.kwargs["command"])
         self.assertNotIn(upf_gateway, patch_exec.call_args.kwargs["command"])
@@ -441,7 +441,7 @@ class TestCharm(unittest.TestCase):
 
         event = Mock()
         event.routing_table = {"networks": {}}
-        self.harness.charm._update_upf_config(event=event)
+        self.harness.charm._update_upf_network_config(event=event)
 
         patch_exec.assert_called_with(
             command=["ip", "route", "replace", DEFAULT_UPF_IP_ADDRESS, "via", DEFAULT_UPF_GATEWAY],
@@ -467,7 +467,7 @@ class TestCharm(unittest.TestCase):
 
         event = Mock()
         event.routing_table = {"networks": routing_table}
-        self.harness.charm._update_upf_config(event=event)
+        self.harness.charm._update_upf_network_config(event=event)
 
         patch_exec.assert_called_with(
             command=["ip", "route", "replace", DEFAULT_UPF_IP_ADDRESS, "via", DEFAULT_UPF_GATEWAY],
