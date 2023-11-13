@@ -96,6 +96,9 @@ class GNBSIMOperatorCharm(CharmBase):
         self.framework.observe(self.on.fiveg_n2_relation_joined, self._configure)
         self.framework.observe(self.on[IP_ROUTER_RELATION_NAME].relation_joined, self._configure)
         self.framework.observe(
+            self.on[IP_ROUTER_RELATION_NAME].relation_departed, self._update_upf_network_config
+        )
+        self.framework.observe(
             self._router_requirer.on.routing_table_updated, self._update_upf_network_config
         )
         self.framework.observe(self._n2_requirer.on.n2_information_available, self._configure)
@@ -236,7 +239,7 @@ class GNBSIMOperatorCharm(CharmBase):
         }
         return [user_plane_network]
 
-    def _get_upf_network_config(self) -> Optional[str]:
+    def _get_upf_ip_address(self) -> Optional[str]:
         """Returns the UPF IP address.
 
         From the ip_router_user_plane relation if it exists and if it contais
@@ -245,27 +248,16 @@ class GNBSIMOperatorCharm(CharmBase):
         """
         if self.model.relations.get(IP_ROUTER_RELATION_NAME):
             routing_table = self._router_requirer.get_routing_table()
-            return self._get_upf_ip_address_from_routing_table(routing_table)
+            if networks := routing_table.get(ACCESS_NETWORK_NAME, []):
+                return networks[0]["gateway"]
         return self._get_upf_ip_address_from_config()
 
     def _update_upf_network_config(self, event: RoutingTableUpdatedEvent) -> None:
-        ip_router_relations = self.model.relations.get(IP_ROUTER_RELATION_NAME)
-        if not ip_router_relations:
+        if not self.model.relations.get(IP_ROUTER_RELATION_NAME):
             logger.info("No %s relations found.", IP_ROUTER_RELATION_NAME)
             return
-        routing_table = event.routing_table.get("networks", {})
-        upf_ip_address = self._get_upf_ip_address_from_routing_table(routing_table)
+        upf_ip_address = self._get_upf_ip_address()
         self._set_config_in_workload(upf_ip_address)
-
-    def _get_upf_ip_address_from_routing_table(self, routing_table: RoutingTable) -> Optional[str]:
-        """Returns a the UPF IP address.
-
-        If the access network exists in the routing table, it returns its gateway.
-        Otherwise, it returns the config values.
-        """
-        if networks := routing_table.get(ACCESS_NETWORK_NAME, []):
-            return networks[0]["gateway"]
-        return self._get_upf_ip_address_from_config()
 
     def _on_fiveg_gnb_identity_request(self, event: EventBase) -> None:
         """Handles 5G GNB Identity request events.
