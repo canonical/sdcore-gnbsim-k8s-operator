@@ -75,19 +75,42 @@ async def test_relate_and_wait_for_active_status(
     ops_test,
     build_and_deploy,
 ):
-    await ops_test.model.add_relation(
+    await ops_test.model.integrate(
         relation1=f"{NRF_CHARM_NAME}:database", relation2=f"{DB_CHARM_NAME}"
     )
-    await ops_test.model.add_relation(
+    await ops_test.model.integrate(
         relation1=f"{AMF_CHARM_NAME}:database", relation2=f"{DB_CHARM_NAME}"
     )
-    await ops_test.model.add_relation(relation1=AMF_CHARM_NAME, relation2=TLS_PROVIDER_CHARM_NAME)
-    await ops_test.model.add_relation(relation1=NRF_CHARM_NAME, relation2=TLS_PROVIDER_CHARM_NAME)
-    await ops_test.model.add_relation(relation1=AMF_CHARM_NAME, relation2=NRF_CHARM_NAME)
-    await ops_test.model.add_relation(relation1=f"{APP_NAME}:fiveg-n2", relation2=AMF_CHARM_NAME)
+    await ops_test.model.integrate(relation1=AMF_CHARM_NAME, relation2=TLS_PROVIDER_CHARM_NAME)
+    await ops_test.model.integrate(relation1=NRF_CHARM_NAME, relation2=TLS_PROVIDER_CHARM_NAME)
+    await ops_test.model.integrate(relation1=AMF_CHARM_NAME, relation2=NRF_CHARM_NAME)
+    await ops_test.model.integrate(relation1=f"{APP_NAME}:fiveg-n2", relation2=AMF_CHARM_NAME)
     await ops_test.model.wait_for_idle(
         apps=[APP_NAME],
         raise_on_error=False,
         status="active",
         timeout=1000,
     )
+
+
+@pytest.mark.abort_on_fail
+async def test_remove_amf_and_wait_for_blocked_status(ops_test, build_and_deploy):
+    assert ops_test.model
+    await ops_test.model.remove_application(AMF_CHARM_NAME, block_until_done=True)
+    await ops_test.model.wait_for_idle(apps=[APP_NAME], status="blocked", timeout=60)
+
+
+@pytest.mark.abort_on_fail
+async def test_restore_amf_and_wait_for_active_status(ops_test, build_and_deploy):
+    assert ops_test.model
+    await ops_test.model.deploy(
+        AMF_CHARM_NAME,
+        application_name=AMF_CHARM_NAME,
+        channel="edge",
+        trust=True,
+    )
+    await ops_test.model.integrate(relation1=AMF_CHARM_NAME, relation2=NRF_CHARM_NAME)
+    await ops_test.model.integrate(relation1=AMF_CHARM_NAME, relation2=DB_CHARM_NAME)
+    await ops_test.model.integrate(relation1=AMF_CHARM_NAME, relation2=TLS_PROVIDER_CHARM_NAME)
+    await ops_test.model.integrate(relation1=APP_NAME, relation2=AMF_CHARM_NAME)
+    await ops_test.model.wait_for_idle(apps=[APP_NAME], status="active", timeout=1000)

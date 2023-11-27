@@ -52,8 +52,12 @@ class TestCharm(unittest.TestCase):
         self.harness.add_relation_unit(relation_id=amf_relation_id, remote_unit_name="amf/0")
         return amf_relation_id
 
-    def _n2_data_available(self) -> None:
-        """Creates the N2 relation and sets the relation data in the n2 relation."""
+    def _n2_data_available(self) -> int:
+        """Creates the N2 relation, sets the relation data in the n2 relation and returns its ID.
+
+        Returns:
+            int: ID of the created relation
+        """
         amf_relation_id = self._create_n2_relation()
         self.harness.update_relation_data(
             relation_id=amf_relation_id,
@@ -64,6 +68,7 @@ class TestCharm(unittest.TestCase):
                 "amf_ip_address": "1.1.1.1",
             },
         )
+        return amf_relation_id
 
     def test_given_default_config_when_config_changed_then_status_is_blocked(
         self,
@@ -126,6 +131,22 @@ class TestCharm(unittest.TestCase):
         self.assertEqual(
             self.harness.charm.unit.status,
             BlockedStatus("Waiting for N2 relation to be created"),
+        )
+
+    @patch(f"{MULTUS_LIB_PATH}.KubernetesMultusCharmLib.is_ready")
+    def test_given_gnbsim_charm_in_active_state_when_n2_relation_breaks_then_status_is_blocked(
+        self, patch_is_ready
+    ):
+        self.harness.handle_exec("gnbsim", [], result=0)
+        self.harness.add_storage("config", attach=True)
+        patch_is_ready.return_value = True
+        self.harness.set_can_connect(container="gnbsim", val=True)
+        n2_relation_id = self._n2_data_available()
+
+        self.harness.remove_relation(n2_relation_id)
+
+        self.assertEqual(
+            self.harness.model.unit.status, BlockedStatus("Waiting for N2 relation to be created")
         )
 
     @patch(f"{MULTUS_LIB_PATH}.KubernetesMultusCharmLib.is_ready")
