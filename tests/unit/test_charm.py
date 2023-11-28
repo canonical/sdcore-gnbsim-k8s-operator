@@ -150,11 +150,11 @@ class TestCharm(unittest.TestCase):
         )
 
     @patch(f"{MULTUS_LIB_PATH}.KubernetesMultusCharmLib.is_ready")
-    @patch("ops.model.Container.exec", new=Mock)
     def test_given_n2_information_not_available_when_config_changed_then_status_is_waiting(
         self,
         patch_is_ready,
     ):
+        self.harness.handle_exec("gnbsim", [], result=0)
         self.harness.add_storage("config", attach=True)
         patch_is_ready.return_value = True
         self.harness.set_can_connect(container="gnbsim", val=True)
