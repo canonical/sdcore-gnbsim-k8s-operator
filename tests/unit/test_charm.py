@@ -304,7 +304,7 @@ class TestCharm(unittest.TestCase):
         event = Mock()
 
         def gnbsim_handler(_: testing.ExecArgs) -> testing.ExecResult:
-            raise ChangeError(err=error, change=None)
+            raise ChangeError(err=error, change=None)  # type: ignore[arg-type]
 
         self.harness.handle_exec("gnbsim", ["/bin/gnbsim"], handler=gnbsim_handler)
         self.harness.set_can_connect(container="gnbsim", val=True)
