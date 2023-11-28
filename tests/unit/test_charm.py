@@ -294,16 +294,19 @@ class TestCharm(unittest.TestCase):
 
         event.fail.assert_called_with(message=f"Failed to execute simulation: {stderr}")
 
-    @patch("ops.model.Container.exec")
     def test_given_simulation_command_fails_with_changeerror_when_start_simulation_action_then_event_fails(  # noqa: E501
-        self, patch_exec
+        self,
     ):
         self.harness.add_storage("config", attach=True)
         root = self.harness.get_filesystem_root("gnbsim")
         (root / "etc/gnbsim/gnb.conf").write_text(read_file("tests/unit/expected_config.yaml"))
         error = "whatever error content"
         event = Mock()
-        patch_exec.side_effect = ChangeError(err=error, change=None)
+
+        def gnbsim_handler(_: testing.ExecArgs) -> testing.ExecResult:
+            raise ChangeError(err=error, change=None)
+
+        self.harness.handle_exec("gnbsim", ["/bin/gnbsim"], handler=gnbsim_handler)
         self.harness.set_can_connect(container="gnbsim", val=True)
 
         self.harness.charm._on_start_simulation_action(event=event)
