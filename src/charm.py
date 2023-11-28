@@ -85,6 +85,7 @@ class GNBSIMOperatorCharm(CharmBase):
         self.framework.observe(self.on.gnbsim_pebble_ready, self._configure)
         self.framework.observe(self.on.start_simulation_action, self._on_start_simulation_action)
         self.framework.observe(self.on.fiveg_n2_relation_joined, self._configure)
+        self.framework.observe(self.on.fiveg_n2_relation_broken, self._on_n2_relation_broken)
         self.framework.observe(self._n2_requirer.on.n2_information_available, self._configure)
         self.framework.observe(
             self._gnb_identity_provider.on.fiveg_gnb_identity_request,
@@ -206,6 +207,12 @@ class GNBSIMOperatorCharm(CharmBase):
         if not self.unit.is_leader():
             return
         self._update_fiveg_gnb_identity_relation_data()
+
+    def _on_n2_relation_broken(self, event: EventBase):
+        if not self._container.can_connect():
+            event.defer()
+            return
+        self.unit.status = BlockedStatus("Waiting for N2 relation to be created")
 
     def _update_fiveg_gnb_identity_relation_data(self) -> None:
         """Publishes GNB name and TAC in the `fiveg_gnb_identity` relation data bag."""
