@@ -224,13 +224,13 @@ class TestCharm(unittest.TestCase):
         patch_is_ready,
     ):
         self.harness.add_storage("config", attach=True)
-        upf_ip_address = "1.1.1.1"
+        upf_subnet = "1.1.0.0/16"
         upf_gateway = "2.2.2.2"
         patch_is_ready.return_value = True
 
         ip_route_called = False
         timeout = 0
-        ip_route_cmd = ["ip", "route", "replace", upf_ip_address, "via", upf_gateway]
+        ip_route_cmd = ["ip", "route", "replace", upf_subnet, "via", upf_gateway]
 
         def ip_route_handler(args: testing.ExecArgs) -> testing.ExecResult:
             nonlocal ip_route_called
@@ -248,7 +248,7 @@ class TestCharm(unittest.TestCase):
 
         self.harness.update_config(
             key_values={
-                "upf-ip-address": upf_ip_address,
+                "upf-subnet": upf_subnet,
                 "upf-gateway": upf_gateway,
             }
         )

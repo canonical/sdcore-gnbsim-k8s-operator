@@ -30,9 +30,6 @@ configuration:
     port: 5000
   httpServer:
     enable: false
-  networkTopo:
-  - upfAddr: {{ upf_ip_address }}
-    upfGw: {{ upf_gateway }}
   profiles:
   - dataPktCount: 5
     defaultAs: {{ icmp_packet_destination }}

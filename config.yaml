@@ -46,11 +46,11 @@ options:
     type: string
     default: "000001"
     description: Tracking Area Code. Hexadecimal value represented as a string.
-  upf-ip-address:
+  upf-subnet:
     type: string
-    default: "192.168.252.3"
-    description: UPF IP address
+    default: "192.168.252.0/24"
+    description: Subnet where the UPFs are located (also called Access network)
   upf-gateway:
     type: string
     default: "192.168.251.1"
-    description: Gateway to use to reach UPF
+    description: Gateway to use to reach the UPF subnet
