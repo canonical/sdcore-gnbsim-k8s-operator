@@ -136,8 +136,6 @@ class GNBSIMOperatorCharm(CharmBase):
             usim_sequence_number=self._get_usim_sequence_number_from_config(),  # type: ignore[arg-type]  # noqa: E501
             sst=self._get_sst_from_config(),  # type: ignore[arg-type]
             tac=self._get_tac_from_config(),  # type: ignore[arg-type]
-            upf_gateway=self._get_upf_gateway_from_config(),  # type: ignore[arg-type]
-            upf_ip_address=self._get_upf_ip_address_from_config(),  # type: ignore[arg-type]
             usim_opc=self._get_usim_opc_from_config(),  # type: ignore[arg-type]
             usim_key=self._get_usim_key_from_config(),  # type: ignore[arg-type]
         )
@@ -262,8 +260,8 @@ class GNBSIMOperatorCharm(CharmBase):
     def _get_upf_gateway_from_config(self) -> Optional[str]:
         return self.model.config.get("upf-gateway")
 
-    def _get_upf_ip_address_from_config(self) -> Optional[str]:
-        return self.model.config.get("upf-ip-address")
+    def _get_upf_subnet_from_config(self) -> Optional[str]:
+        return self.model.config.get("upf-subnet")
 
     def _get_usim_key_from_config(self) -> Optional[str]:
         return self.model.config.get("usim-key")
@@ -296,8 +294,6 @@ class GNBSIMOperatorCharm(CharmBase):
         sd: str,
         sst: int,
         tac: str,
-        upf_gateway,
-        upf_ip_address,
         usim_key: str,
         usim_opc: str,
         usim_sequence_number: str,
@@ -315,8 +311,6 @@ class GNBSIMOperatorCharm(CharmBase):
             sd: Slice ID
             sst: Slice Selection Type
             tac: Tracking Area Code
-            upf_gateway: UPF Gateway
-            upf_ip_address: UPF IP address
             usim_key: USIM key
             usim_opc: USIM OPC
             usim_sequence_number: USIM sequence number
@@ -337,8 +331,6 @@ class GNBSIMOperatorCharm(CharmBase):
             sd=sd,
             sst=sst,
             tac=tac,
-            upf_gateway=upf_gateway,
-            upf_ip_address=upf_ip_address,
             usim_key=usim_key,
             usim_opc=usim_opc,
             usim_sequence_number=usim_sequence_number,
@@ -365,8 +357,8 @@ class GNBSIMOperatorCharm(CharmBase):
             invalid_configs.append("tac")
         if not self._get_upf_gateway_from_config():
             invalid_configs.append("upf-gateway")
-        if not self._get_upf_ip_address_from_config():
-            invalid_configs.append("upf-ip-address")
+        if not self._get_upf_subnet_from_config():
+            invalid_configs.append("upf-subnet")
         if not self._get_usim_key_from_config():
             invalid_configs.append("usim-key")
         if not self._get_usim_opc_from_config():
@@ -378,7 +370,7 @@ class GNBSIMOperatorCharm(CharmBase):
     def _create_upf_route(self) -> None:
         """Creates route to reach the UPF."""
         self._exec_command_in_workload(
-            command=f"ip route replace {self._get_upf_ip_address_from_config()} via {self._get_upf_gateway_from_config()}"  # noqa: E501
+            command=f"ip route replace {self._get_upf_subnet_from_config()} via {self._get_upf_gateway_from_config()}"  # noqa: E501
         )
         logger.info("UPF route created")
 

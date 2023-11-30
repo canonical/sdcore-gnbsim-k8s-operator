@@ -30,9 +30,6 @@ configuration:
     port: 5000
   httpServer:
     enable: false
-  networkTopo:
-  - upfAddr: 192.168.252.3
-    upfGw: 192.168.251.1
   profiles:
   - dataPktCount: 5
     defaultAs: 192.168.250.1
