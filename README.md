@@ -1,7 +1,7 @@
-# SD-Core GNBSIM K8 Operator
+# SD-Core GNBSIM Operator for K8s
 [![CharmHub Badge](https://charmhub.io/sdcore-gnbsim-k8s/badge.svg)](https://charmhub.io/sdcore-gnbsim-k8s)
 
-A Charmed K8s Operator for SD-Core's gNodeB simulator (GNBSIM) component. 
+A Charmed Operator for SD-Core's gNodeB simulator (GNBSIM) component for K8s. 
 
 ## Usage
 

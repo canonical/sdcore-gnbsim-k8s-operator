@@ -2,7 +2,7 @@
 # Copyright 2023 Canonical Ltd.
 # See LICENSE file for licensing details.
 
-"""Charmed K8s operator for the 5G GNBSIM service."""
+"""Charmed operator for the 5G GNBSIM service for K8s."""
 
 import json
 import logging
@@ -50,8 +50,8 @@ class KubernetesMultusCharmEvents(CharmEvents):
     nad_config_changed = EventSource(NadConfigChangedEvent)
 
 
-class GNBSIMK8sOperatorCharm(CharmBase):
-    """Main class to describe juju event handling for the 5G GNBSIM K8s operator."""
+class GNBSIMOperatorCharm(CharmBase):
+    """Main class to describe juju event handling for the 5G GNBSIM operator for K8s."""
 
     on = KubernetesMultusCharmEvents()
 
@@ -424,4 +424,4 @@ class GNBSIMK8sOperatorCharm(CharmBase):
 
 
 if __name__ == "__main__":  # pragma: nocover
-    main(GNBSIMK8sOperatorCharm)
+    main(GNBSIMOperatorCharm)

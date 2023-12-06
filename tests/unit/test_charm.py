@@ -9,7 +9,7 @@ from ops import testing
 from ops.model import ActiveStatus, BlockedStatus, WaitingStatus
 from ops.pebble import ChangeError
 
-from charm import GNBSIMK8sOperatorCharm
+from charm import GNBSIMOperatorCharm
 
 MULTUS_LIB_PATH = "charms.kubernetes_charm_libraries.v0.multus"
 GNB_IDENTITY_LIB_PATH = "charms.sdcore_gnbsim.v0.fiveg_gnb_identity"
@@ -37,7 +37,7 @@ class TestCharm(unittest.TestCase):
     )
     def setUp(self, patch_k8s_client):
         self.namespace = "whatever"
-        self.harness = testing.Harness(GNBSIMK8sOperatorCharm)
+        self.harness = testing.Harness(GNBSIMOperatorCharm)
         self.harness.set_model_name(name=self.namespace)
         self.addCleanup(self.harness.cleanup)
         self.harness.begin()
