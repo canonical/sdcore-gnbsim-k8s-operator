@@ -3,7 +3,7 @@
 
 import logging
 
-from charms.sdcore_gnbsim.v0.fiveg_gnb_identity import GnbIdentityProvides
+from charms.sdcore_gnbsim_k8s.v0.fiveg_gnb_identity import GnbIdentityProvides
 from ops.charm import CharmBase
 from ops.main import main
 

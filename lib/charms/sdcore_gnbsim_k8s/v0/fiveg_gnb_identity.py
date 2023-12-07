@@ -12,7 +12,7 @@ To get started using the library, you need to fetch the library using `charmcraf
 
 ```shell
 cd some-charm
-charmcraft fetch-lib charms.sdcore_gnbsim.v0.fiveg_gnb_identity
+charmcraft fetch-lib charms.sdcore_gnbsim_k8s.v0.fiveg_gnb_identity
 ```
 
 Add the following libraries to the charm's `requirements.txt` file:
@@ -24,7 +24,7 @@ Typical usage of this class would look something like:
 
     ```python
     ...
-    from charms.sdcore_gnbsim.v0.fiveg_gnb_identity import GnbIdentityProvides
+    from charms.sdcore_gnbsim_k8s.v0.fiveg_gnb_identity import GnbIdentityProvides
     ...
 
     class SomeProviderCharm(CharmBase):
@@ -56,7 +56,7 @@ Typical usage of this class would look something like:
 
     ```python
     ...
-    from charms.sdcore_gnbsim.v0.fiveg_gnb_identity import GnbIdentityRequires
+    from charms.sdcore_gnbsim_k8s.v0.fiveg_gnb_identity import GnbIdentityRequires
     ...
 
     class SomeRequirerCharm(CharmBase):
@@ -65,7 +65,7 @@ Typical usage of this class would look something like:
             ...
             self.fiveg_gnb_identity = GnbIdentityRequires(charm=self, relation_name="fiveg_gnb_identity")
             ...
-            self.framework.observe(self.fiveg_gnb_identity.on.fiveg_gnb_identity_available, 
+            self.framework.observe(self.fiveg_gnb_identity.on.fiveg_gnb_identity_available,
                 self._on_fiveg_gnb_identity_available)
 
         def _on_fiveg_gnb_identity_available(self, event):
@@ -90,7 +90,7 @@ from ops.framework import EventBase, EventSource, Handle, Object
 from pydantic import BaseModel, Field, ValidationError
 
 # The unique Charmhub library identifier, never change it
-LIBID = "ca9a66c5806e47e7b2750e8cdf696b80"
+LIBID = "fdef465e3dc143cfb805ec074673a7e9"
 
 # Increment this major API version when introducing breaking changes
 LIBAPI = 0
@@ -100,7 +100,6 @@ LIBAPI = 0
 LIBPATCH = 1
 
 PYDEPS = ["pydantic", "pytest-interface-tester"]
-
 
 logger = logging.getLogger(__name__)
 
@@ -134,6 +133,7 @@ class FivegGnbIdentityProviderAppData(BaseModel):
         examples=[1]
     )
 
+
 class ProviderSchema(DataBagSchema):
     """Provider schema for fiveg_gnb_identity."""
 
@@ -162,7 +162,7 @@ class FivegGnbIdentityRequestEvent(EventBase):
 
     def __init__(self, handle: Handle, relation_id: int):
         """Sets relation id.
-        
+
         Args:
             handle (Handle): Juju framework handle.
             relation_id : ID of the relation.
@@ -172,7 +172,7 @@ class FivegGnbIdentityRequestEvent(EventBase):
 
     def snapshot(self) -> dict:
         """Returns event data.
-        
+
         Returns:
             (dict): contains the relation ID.
         """
@@ -182,7 +182,7 @@ class FivegGnbIdentityRequestEvent(EventBase):
 
     def restore(self, snapshot: dict) -> None:
         """Restores event data.
-        
+
         Args:
             snapshot (dict): contains the relation ID.
         """
@@ -213,7 +213,7 @@ class GnbIdentityProvides(Object):
         self.framework.observe(charm.on[relation_name].relation_joined, self._on_relation_joined)
 
     def publish_gnb_identity_information(
-        self, relation_id: int, gnb_name: str, tac: int
+            self, relation_id: int, gnb_name: str, tac: int
     ) -> None:
         """Sets gNodeB's name and TAC in the relation data.
 
@@ -223,7 +223,7 @@ class GnbIdentityProvides(Object):
             tac (int): Tracking Area Code.
         """
         if not data_matches_provider_schema(
-            data={"gnb_name": gnb_name, "tac": tac}
+                data={"gnb_name": gnb_name, "tac": tac}
         ):
             raise ValueError(f"Invalid gnb identity data: {gnb_name}, {tac}")
         relation = self.model.get_relation(
@@ -261,7 +261,6 @@ class GnbIdentityAvailableEvent(EventBase):
 
     def restore(self, snapshot: dict) -> None:
         """Restores event data.
-        
         Args:
             snapshot (dict): contains information to be restored.
         """
