@@ -14,7 +14,7 @@ to be able to provide or consume information on connectivity to the N2 plane.
 From a charm directory, fetch the library using `charmcraft`:
 
 ```shell
-charmcraft fetch-lib charms.sdcore_amf.v0.fiveg_n2
+charmcraft fetch-lib charms.sdcore_amf_k8s.v0.fiveg_n2
 ```
 
 Add the following libraries to the charm's `requirements.txt` file:
@@ -30,7 +30,7 @@ Example:
 from ops.charm import CharmBase
 from ops.main import main
 
-from charms.sdcore_amf.v0.fiveg_n2 import N2InformationAvailableEvent, N2Requires
+from charms.sdcore_amf_k8s.v0.fiveg_n2 import N2InformationAvailableEvent, N2Requires
 
 logger = logging.getLogger(__name__)
 
@@ -64,7 +64,7 @@ Example:
 from ops.charm import CharmBase, RelationJoinedEvent
 from ops.main import main
 
-from charms.sdcore_amf.v0.fiveg_n2 import N2Provides
+from charms.sdcore_amf_k8s.v0.fiveg_n2 import N2Provides
 
 
 class DummyFivegN2ProviderCharm(CharmBase):
@@ -105,12 +105,12 @@ from ops.model import Relation
 from pydantic import BaseModel, Field, IPvAnyAddress, ValidationError
 
 # The unique Charmhub library identifier, never change it
-LIBID = "3bb439930da24fd09631af74f70ea394"
+LIBID = "396917943b9b4b6989166b77c97a9fb8"
 
 # Increment this major API version when introducing breaking changes
 LIBAPI = 0
 
-# Increment this PATCH version before using `charmcraft push-lib` or reset
+# Increment this PATCH version before using `charmcraft publish-lib` or reset
 # to 0 if you are raising the major API version
 LIBPATCH = 1
 

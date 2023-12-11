@@ -7,7 +7,7 @@ from unittest.mock import call, patch
 from ops import testing
 from test_charms.test_requirer_charm.src.charm import WhateverCharm  # type: ignore[import]
 
-TEST_CHARM_PATH = "charms.sdcore_gnbsim.v0.fiveg_gnb_identity.GnbIdentityRequirerCharmEvents"
+TEST_CHARM_PATH = "charms.sdcore_gnbsim_k8s.v0.fiveg_gnb_identity.GnbIdentityRequirerCharmEvents"
 
 
 class TestGnbIdentityRequires(unittest.TestCase):

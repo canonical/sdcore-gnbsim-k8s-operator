@@ -12,7 +12,7 @@ from ops.pebble import ChangeError
 from charm import GNBSIMOperatorCharm
 
 MULTUS_LIB_PATH = "charms.kubernetes_charm_libraries.v0.multus"
-GNB_IDENTITY_LIB_PATH = "charms.sdcore_gnbsim.v0.fiveg_gnb_identity"
+GNB_IDENTITY_LIB_PATH = "charms.sdcore_gnbsim_k8s.v0.fiveg_gnb_identity"
 
 
 def read_file(path: str) -> str:

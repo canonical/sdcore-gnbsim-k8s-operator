@@ -27,7 +27,7 @@ jobs:
   integration-test:
     uses: canonical/sdcore-github-workflows/.github/workflows/integration-test-with-multus.yaml@main
     with:
-      charm-file-name: "sdcore-gnbsim_ubuntu-22.04-amd64.charm"
+      charm-file-name: "sdcore-gnbsim-k8s_ubuntu-22.04-amd64.charm"
 
   publish-charm:
     name: Publish Charm
@@ -39,7 +39,7 @@ jobs:
     if: ${{ github.ref_name == 'main' }}
     uses: canonical/sdcore-github-workflows/.github/workflows/publish-charm.yaml@main
     with:
-      charm-file-name: "sdcore-gnbsim_ubuntu-22.04-amd64.charm"
+      charm-file-name: "sdcore-gnbsim-k8s_ubuntu-22.04-amd64.charm"
     secrets: inherit
 
   fiveg-gnb-identity-lib-needs-publishing:
@@ -53,7 +53,7 @@ jobs:
         with:
           filters: |
             fiveg_gnb_identity:
-              - 'lib/charms/sdcore_gnbsim/v0/fiveg_gnb_identity.py'
+              - 'lib/charms/sdcore_gnbsim_k8s/v0/fiveg_gnb_identity.py'
 
   publish-fiveg-gnb-identity-lib:
     name: Publish Lib
@@ -63,5 +63,5 @@ jobs:
     if: ${{ github.ref_name == 'main' }}
     uses: canonical/sdcore-github-workflows/.github/workflows/publish-lib.yaml@main
     with:
-      lib-name: "charms.sdcore_gnbsim.v0.fiveg_gnb_identity"
+      lib-name: "charms.sdcore_gnbsim_k8s.v0.fiveg_gnb_identity"
     secrets: inherit

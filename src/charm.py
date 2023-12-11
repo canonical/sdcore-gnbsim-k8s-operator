@@ -2,7 +2,7 @@
 # Copyright 2023 Canonical Ltd.
 # See LICENSE file for licensing details.
 
-"""Charmed operator for the 5G GNBSIM service."""
+"""Charmed operator for the 5G GNBSIM service for K8s."""
 
 import json
 import logging
@@ -16,8 +16,10 @@ from charms.kubernetes_charm_libraries.v0.multus import (  # type: ignore[import
 from charms.observability_libs.v1.kubernetes_service_patch import (  # type: ignore[import]
     KubernetesServicePatch,
 )
-from charms.sdcore_amf.v0.fiveg_n2 import N2Requires  # type: ignore[import]
-from charms.sdcore_gnbsim.v0.fiveg_gnb_identity import GnbIdentityProvides  # type: ignore[import]
+from charms.sdcore_amf_k8s.v0.fiveg_n2 import N2Requires  # type: ignore[import]
+from charms.sdcore_gnbsim_k8s.v0.fiveg_gnb_identity import (  # type: ignore[import]
+    GnbIdentityProvides,
+)
 from jinja2 import Environment, FileSystemLoader
 from lightkube.models.core_v1 import ServicePort
 from lightkube.models.meta_v1 import ObjectMeta
@@ -51,7 +53,7 @@ class KubernetesMultusCharmEvents(CharmEvents):
 
 
 class GNBSIMOperatorCharm(CharmBase):
-    """Main class to describe juju event handling for the 5G GNBSIM operator."""
+    """Main class to describe juju event handling for the 5G GNBSIM operator for K8s."""
 
     on = KubernetesMultusCharmEvents()
 
