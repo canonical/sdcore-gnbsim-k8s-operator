@@ -13,3 +13,4 @@ juju run sdcore-gnbsim-k8s/leader start-simulation
 ## Image
 
 - **gnbsim**: `ghcr.io/canonical/sdcore-gnbsim:1.3`
+
