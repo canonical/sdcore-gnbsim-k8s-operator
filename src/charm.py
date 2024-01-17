@@ -170,6 +170,7 @@ class GNBSIMOperatorCharm(CharmBase):
 
     def _generate_network_annotations(self) -> List[NetworkAnnotation]:
         """Generates a list of NetworkAnnotations to be used by gnbsim's StatefulSet.
+
         Returns:
             List[NetworkAnnotation]: List of NetworkAnnotations
         """
