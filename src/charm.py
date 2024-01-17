@@ -6,7 +6,7 @@
 
 import json
 import logging
-from typing import Optional, Tuple
+from typing import List, Optional, Tuple
 
 from charms.kubernetes_charm_libraries.v0.multus import (  # type: ignore[import]
     KubernetesMultusCharmLib,
@@ -72,12 +72,7 @@ class GNBSIMOperatorCharm(CharmBase):
             charm=self,
             container_name=self._container_name,
             cap_net_admin=True,
-            network_annotations=[
-                NetworkAnnotation(
-                    name=GNB_NETWORK_ATTACHMENT_DEFINITION_NAME,
-                    interface=GNB_INTERFACE_NAME,
-                ),
-            ],
+            network_annotations_func=self._generate_network_annotations,
             network_attachment_definitions_func=self._network_attachment_definitions_from_config,
             refresh_event=self.on.nad_config_changed,
         )
@@ -172,6 +167,18 @@ class GNBSIMOperatorCharm(CharmBase):
             event.fail(message=f"Failed to execute simulation: {str(e.stderr)}")
         except ChangeError as e:
             event.fail(message=f"Failed to execute simulation: {e.err}")
+
+    def _generate_network_annotations(self) -> List[NetworkAnnotation]:
+        """Generates a list of NetworkAnnotations to be used by gnbsim's StatefulSet.
+
+        Returns:
+            List[NetworkAnnotation]: List of NetworkAnnotations
+        """
+        return [
+            NetworkAnnotation(
+                name=GNB_NETWORK_ATTACHMENT_DEFINITION_NAME, interface=GNB_INTERFACE_NAME
+            )
+        ]
 
     def _network_attachment_definitions_from_config(self) -> list[NetworkAttachmentDefinition]:
         """Returns list of Multus NetworkAttachmentDefinitions to be created based on config."""
