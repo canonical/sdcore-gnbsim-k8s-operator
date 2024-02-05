@@ -6,25 +6,28 @@ This SD-Core GNBSIM K8s Terraform module aims to deploy the [sdcore-gnbsim-k8s c
 
 ### Prerequisites
 
-The following software and tools needs to be installed and should be running in the local environment.
+The following software and tools needs to be installed and should be running in the local environment. Please [set up your environment](https://discourse.charmhub.io/t/set-up-your-development-environment-with-microk8s-for-juju-terraform-provider/13109) before deployment.
 
 - `microk8s`
 - `juju 3.x`
 - `terrafom`
 
+The `sdcore-gnbsim-ks8` application requires the integrations with the following application.
+
+- `sdcore-amf-k8s`
+
 ### Deploy the sdcore-gnbsim-k8s charm using Terraform
 
-Make sure that `storage`, `multus` and `metallb` plugins are enabled for Microk8s:
+Make sure that `storage` and `multus` plugins are enabled for Microk8s:
 
 ```console
 sudo microk8s enable hostpath-storage multus
-sudo microk8s enable metallb:10.0.0.2-10.0.0.4
 ```
 
 Add a Juju model:
 
 ```console
-juju add model <model-name>
+juju add-model <model-name>
 ```
 
 Initialise the provider:
@@ -33,23 +36,21 @@ Initialise the provider:
 terraform init
 ```
 
-Customize the configuration inputs under `terraform.tfvars` file according to requirement.
-
-Replace the values in the `terraform.tfvars` file:
+Fill the mandatory config options in the `terraform.tfvars` file:
 
 ```yaml
 # Mandatory Config Options
 model_name           = "put your model-name here"
-amf_application_name = "put your amf app name here"
+amf_application_name = "put your AMF app name here"
 ```
 
-Run Terraform Plan by providing var-file:
+Create the Terraform Plan:
 
 ```console
 terraform plan -var-file="terraform.tfvars" 
 ```
 
-Deploy the resources, skip the approval:
+Deploy the resources:
 
 ```console
 terraform apply -auto-approve 
@@ -65,7 +66,7 @@ juju status --relations
 
 ### Clean up
 
-Remove the applications:
+Destroy the deployment:
 
 ```console
 terraform destroy -auto-approve
