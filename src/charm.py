@@ -78,6 +78,7 @@ class GNBSIMOperatorCharm(CharmBase):
         )
         self._gnb_identity_provider = GnbIdentityProvides(self, GNB_IDENTITY_RELATION_NAME)
 
+        self.framework.observe(self.on.update_status, self._configure)
         self.framework.observe(self.on.config_changed, self._configure)
         self.framework.observe(self.on.gnbsim_pebble_ready, self._configure)
         self.framework.observe(self.on.start_simulation_action, self._on_start_simulation_action)
@@ -86,7 +87,7 @@ class GNBSIMOperatorCharm(CharmBase):
         self.framework.observe(self._n2_requirer.on.n2_information_available, self._configure)
         self.framework.observe(
             self._gnb_identity_provider.on.fiveg_gnb_identity_request,
-            self._on_fiveg_gnb_identity_request,
+            self._configure,
         )
 
     def _configure(self, event: EventBase) -> None:
@@ -106,15 +107,12 @@ class GNBSIMOperatorCharm(CharmBase):
             return
         if not self._container.can_connect():
             self.unit.status = WaitingStatus("Waiting for container to be ready")
-            event.defer()
             return
         if not self._container.exists(path=BASE_CONFIG_PATH):
             self.unit.status = WaitingStatus("Waiting for storage to be attached")
-            event.defer()
             return
         if not self._kubernetes_multus.is_ready():
             self.unit.status = WaitingStatus("Waiting for Multus to be ready")
-            event.defer()
             return
 
         if not self._n2_requirer.amf_hostname or not self._n2_requirer.amf_port:
@@ -205,24 +203,13 @@ class GNBSIMOperatorCharm(CharmBase):
             ),
         ]
 
-    def _on_fiveg_gnb_identity_request(self, event: EventBase) -> None:
-        """Handles 5G GNB Identity request events.
-
-        Args:
-            event: Juju event
-        """
-        if not self.unit.is_leader():
-            return
-        self._update_fiveg_gnb_identity_relation_data()
-
     def _on_n2_relation_broken(self, event: EventBase):
-        if not self._container.can_connect():
-            event.defer()
-            return
         self.unit.status = BlockedStatus("Waiting for N2 relation to be created")
 
     def _update_fiveg_gnb_identity_relation_data(self) -> None:
         """Publishes GNB name and TAC in the `fiveg_gnb_identity` relation data bag."""
+        if not self.unit.is_leader():
+            return
         fiveg_gnb_identity_relations = self.model.relations.get(GNB_IDENTITY_RELATION_NAME)
         if not fiveg_gnb_identity_relations:
             logger.info("No %s relations found.", GNB_IDENTITY_RELATION_NAME)
@@ -362,7 +349,7 @@ class GNBSIMOperatorCharm(CharmBase):
             invalid_configs.append("sd")
         if not self._get_sst_from_config():
             invalid_configs.append("sst")
-        if not self._get_tac_from_config():
+        if not self._get_tac_from_config() or not self._get_tac_as_int():
             invalid_configs.append("tac")
         if not self._get_upf_gateway_from_config():
             invalid_configs.append("upf-gateway")
