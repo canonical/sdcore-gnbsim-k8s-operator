@@ -1,7 +1,16 @@
+# Copyright 2024 Canonical Ltd.
+# See LICENSE file for licensing details.
+
 variable "model_name" {
   description = "Name of Juju model to deploy application to."
   type        = string
   default     = ""
+}
+
+variable "app_name" {
+  description = "Name of the application in the Juju model."
+  type        = string
+  default     = "gnbsim"
 }
 
 variable "channel" {
@@ -10,15 +19,8 @@ variable "channel" {
   default     = "1.3/edge"
 }
 
-variable "gnb-config" {
-  description = "Additional configuration for the GNBSIM"
+variable "config" {
+  description = "Application config. Details about available options can be found at https://charmhub.io/sdcore-gnbsim-k8s-operator/configure."
+  type        = map(string)
   default     = {}
 }
-
-variable "amf_application_name" {
-  description = "The name of the AMF application."
-  type        = string
-  default     = ""
-}
-
-
