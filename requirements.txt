@@ -1,4 +1,5 @@
 jinja2
+juju==3.3.0.0
 lightkube
 lightkube-models
 ops
