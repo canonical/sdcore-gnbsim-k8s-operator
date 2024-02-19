@@ -10,12 +10,12 @@ output "app_name" {
 
 output "fiveg_n2_endpoint" {
   description = "Name of the endpoint used to provide information on connectivity to the N2 plane."
-  value = "fiveg-n2"
+  value       = "fiveg-n2"
 }
 
 # Provided integration endpoints
 
 output "fiveg_gnb_identity_endpoint" {
   description = "Name of the endpoint used to provide information about simulated gNB instance."
-  value = "fiveg-n2"
+  value       = "fiveg_gnb_identity"
 }
