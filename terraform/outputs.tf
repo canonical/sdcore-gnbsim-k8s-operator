@@ -17,5 +17,5 @@ output "fiveg_n2_endpoint" {
 
 output "fiveg_gnb_identity_endpoint" {
   description = "Name of the endpoint used to provide information about simulated gNB instance."
-  value = "fiveg-n2"
+  value = "fiveg_gnb_identity"
 }
