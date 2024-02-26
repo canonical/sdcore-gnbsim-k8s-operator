@@ -13,7 +13,8 @@ on:
 jobs:
   check-libraries:
     uses: canonical/sdcore-github-workflows/.github/workflows/check-libraries.yaml@main
-    secrets: inherit
+    secrets:
+      CHARMCRAFT_AUTH: ${{ secrets.CHARMCRAFT_AUTH }}
 
   lint-report:
     uses: canonical/sdcore-github-workflows/.github/workflows/lint-report.yaml@main
@@ -44,7 +45,8 @@ jobs:
     with:
       charm-file-name: "sdcore-gnbsim-k8s_ubuntu-22.04-amd64.charm"
       track-name: 1.3
-    secrets: inherit
+    secrets:
+      CHARMCRAFT_AUTH: ${{ secrets.CHARMCRAFT_AUTH }}
 
   fiveg-gnb-identity-lib-needs-publishing:
     runs-on: ubuntu-22.04
@@ -68,4 +70,5 @@ jobs:
     uses: canonical/sdcore-github-workflows/.github/workflows/publish-lib.yaml@main
     with:
       lib-name: "charms.sdcore_gnbsim_k8s.v0.fiveg_gnb_identity"
-    secrets: inherit
+    secrets:
+      CHARMCRAFT_AUTH: ${{ secrets.CHARMCRAFT_AUTH }}
