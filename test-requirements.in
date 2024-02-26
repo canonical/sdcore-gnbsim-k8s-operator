@@ -1,0 +1,15 @@
+black
+coverage[toml]
+flake8-docstrings
+flake8-builtins
+isort
+juju
+macaroonbakery==1.3.4  # https://protobuf.dev/news/2022-05-06/#python-updates
+mypy
+pep8-naming
+pyproject-flake8
+pytest
+pytest-operator
+types-PyYAML
+types-setuptools
+types-toml
