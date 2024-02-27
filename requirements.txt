@@ -4,6 +4,8 @@
 #
 #    pip-compile requirements.in
 #
+annotated-types==0.6.0
+    # via pydantic
 anyio==4.3.0
     # via httpx
 bcrypt==4.1.2
@@ -90,10 +92,12 @@ pyasn1-modules==0.3.0
     # via google-auth
 pycparser==2.21
     # via cffi
-pydantic==1.10.14
+pydantic==2.5.3
     # via
     #   -r requirements.in
     #   pytest-interface-tester
+pydantic-core==2.14.6
+    # via pydantic
 pymacaroons==0.13.0
     # via macaroonbakery
 pynacl==1.5.0
@@ -148,6 +152,7 @@ typer==0.7.0
 typing-extensions==4.10.0
     # via
     #   pydantic
+    #   pydantic-core
     #   typing-inspect
 typing-inspect==0.9.0
     # via juju
