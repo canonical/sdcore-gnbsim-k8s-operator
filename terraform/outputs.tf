@@ -13,6 +13,11 @@ output "fiveg_n2_endpoint" {
   value       = "fiveg-n2"
 }
 
+output "logging_endpoint" {
+  description = "Name of the endpoint used to integrate with the Logging provider."
+  value       = "logging"
+}
+
 # Provided integration endpoints
 
 output "fiveg_gnb_identity_endpoint" {
