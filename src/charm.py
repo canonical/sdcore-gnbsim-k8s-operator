@@ -13,6 +13,7 @@ from charms.kubernetes_charm_libraries.v0.multus import (  # type: ignore[import
     NetworkAnnotation,
     NetworkAttachmentDefinition,
 )
+from charms.loki_k8s.v1.loki_push_api import LogForwarder  # type: ignore[import]
 from charms.observability_libs.v1.kubernetes_service_patch import (  # type: ignore[import]
     KubernetesServicePatch,
 )
@@ -37,6 +38,7 @@ GNB_INTERFACE_NAME = "gnb"
 GNB_NETWORK_ATTACHMENT_DEFINITION_NAME = "gnb-net"
 N2_RELATION_NAME = "fiveg-n2"
 GNB_IDENTITY_RELATION_NAME = "fiveg_gnb_identity"
+LOGGING_RELATION_NAME = "logging"
 
 
 class NadConfigChangedEvent(EventBase):
@@ -77,7 +79,7 @@ class GNBSIMOperatorCharm(CharmBase):
             refresh_event=self.on.nad_config_changed,
         )
         self._gnb_identity_provider = GnbIdentityProvides(self, GNB_IDENTITY_RELATION_NAME)
-
+        self._logging = LogForwarder(charm=self, relation_name=LOGGING_RELATION_NAME)
         self.framework.observe(self.on.update_status, self._configure)
         self.framework.observe(self.on.config_changed, self._configure)
         self.framework.observe(self.on.gnbsim_pebble_ready, self._configure)

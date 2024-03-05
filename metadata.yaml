@@ -33,6 +33,9 @@ provides:
 requires:
   fiveg-n2:
     interface: fiveg_n2
+  logging:
+    interface: loki_push_api
 
 assumes:
   - k8s-api
+  - juju >= 3.4
