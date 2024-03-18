@@ -48,6 +48,7 @@ class TestCharm(unittest.TestCase):
         self.harness.set_can_connect(container="gnbsim", val=True)
         self._n2_data_available()
         patch_multus_is_ready.return_value = True
+        self.harness.evaluate_status()
         self.assertEqual(self.harness.charm.unit.status, ActiveStatus())
 
     def _create_n2_relation(self) -> int:
@@ -82,6 +83,7 @@ class TestCharm(unittest.TestCase):
         self,
     ):
         self.harness.update_config(key_values={"usim-opc": ""})
+        self.harness.evaluate_status()
 
         self.assertEqual(
             self.harness.charm.unit.status,
@@ -97,6 +99,7 @@ class TestCharm(unittest.TestCase):
         self.harness.set_can_connect(container="gnbsim", val=False)
 
         self.harness.update_config(key_values={})
+        self.harness.evaluate_status()
 
         self.assertEqual(
             self.harness.charm.unit.status,
@@ -111,6 +114,7 @@ class TestCharm(unittest.TestCase):
         self._n2_data_available()
 
         self.harness.update_config(key_values={})
+        self.harness.evaluate_status()
 
         self.assertEqual(
             self.harness.charm.unit.status,
@@ -126,6 +130,7 @@ class TestCharm(unittest.TestCase):
         self._create_n2_relation()
 
         self.harness.update_config(key_values={})
+        self.harness.evaluate_status()
 
         self.assertEqual(
             self.harness.charm.unit.status,
@@ -140,6 +145,7 @@ class TestCharm(unittest.TestCase):
         self.harness.set_can_connect(container="gnbsim", val=True)
 
         self.harness.update_config(key_values={})
+        self.harness.evaluate_status()
 
         self.assertEqual(
             self.harness.charm.unit.status,
@@ -156,6 +162,7 @@ class TestCharm(unittest.TestCase):
         n2_relation_id = self._n2_data_available()
 
         self.harness.remove_relation(n2_relation_id)
+        self.harness.evaluate_status()
 
         self.assertEqual(
             self.harness.model.unit.status, BlockedStatus("Waiting for N2 relation to be created")
@@ -169,6 +176,7 @@ class TestCharm(unittest.TestCase):
         self._create_n2_relation()
 
         self.harness.update_config(key_values={})
+        self.harness.evaluate_status()
 
         self.assertEqual(
             self.harness.charm.unit.status,
@@ -477,6 +485,7 @@ class TestCharm(unittest.TestCase):
 
         test_tac = "gg"
         self.harness.update_config(key_values={"tac": test_tac})
+        self.harness.evaluate_status()
         self.assertEqual(
             self.harness.charm.unit.status, BlockedStatus("Configurations are invalid: ['tac']")
         )
