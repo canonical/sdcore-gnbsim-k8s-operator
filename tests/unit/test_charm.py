@@ -48,6 +48,7 @@ class TestCharm(unittest.TestCase):
         self.harness.set_can_connect(container="gnbsim", val=True)
         self._n2_data_available()
         patch_multus_is_ready.return_value = True
+        self.harness.evaluate_status()
         self.assertEqual(self.harness.charm.unit.status, ActiveStatus())
 
     def _create_n2_relation(self) -> int:
@@ -82,6 +83,7 @@ class TestCharm(unittest.TestCase):
         self,
     ):
         self.harness.update_config(key_values={"usim-opc": ""})
+        self.harness.evaluate_status()
 
         self.assertEqual(
             self.harness.charm.unit.status,
@@ -97,6 +99,7 @@ class TestCharm(unittest.TestCase):
         self.harness.set_can_connect(container="gnbsim", val=False)
 
         self.harness.update_config(key_values={})
+        self.harness.evaluate_status()
 
         self.assertEqual(
             self.harness.charm.unit.status,
@@ -111,6 +114,7 @@ class TestCharm(unittest.TestCase):
         self._n2_data_available()
 
         self.harness.update_config(key_values={})
+        self.harness.evaluate_status()
 
         self.assertEqual(
             self.harness.charm.unit.status,
@@ -126,6 +130,7 @@ class TestCharm(unittest.TestCase):
         self._create_n2_relation()
 
         self.harness.update_config(key_values={})
+        self.harness.evaluate_status()
 
         self.assertEqual(
             self.harness.charm.unit.status,
@@ -140,6 +145,7 @@ class TestCharm(unittest.TestCase):
         self.harness.set_can_connect(container="gnbsim", val=True)
 
         self.harness.update_config(key_values={})
+        self.harness.evaluate_status()
 
         self.assertEqual(
             self.harness.charm.unit.status,
@@ -156,6 +162,7 @@ class TestCharm(unittest.TestCase):
         n2_relation_id = self._n2_data_available()
 
         self.harness.remove_relation(n2_relation_id)
+        self.harness.evaluate_status()
 
         self.assertEqual(
             self.harness.model.unit.status, BlockedStatus("Waiting for N2 relation to be created")
@@ -169,6 +176,7 @@ class TestCharm(unittest.TestCase):
         self._create_n2_relation()
 
         self.harness.update_config(key_values={})
+        self.harness.evaluate_status()
 
         self.assertEqual(
             self.harness.charm.unit.status,
@@ -470,13 +478,14 @@ class TestCharm(unittest.TestCase):
     @patch(f"{MULTUS_LIB_PATH}.KubernetesMultusCharmLib.is_ready")
     @patch(f"{GNB_IDENTITY_LIB_PATH}.GnbIdentityProvides.publish_gnb_identity_information")
     def test_given_tac_is_not_hexadecimal_when_update_config_then_charm_status_is_blocked(
-        self, patched_publish_gnb_identity, patch_multus_is_ready
+        self, _, patch_multus_is_ready
     ):
         self.set_up_active_status_charm(patch_multus_is_ready)
         self.harness.set_leader(is_leader=True)
 
         test_tac = "gg"
         self.harness.update_config(key_values={"tac": test_tac})
+        self.harness.evaluate_status()
         self.assertEqual(
             self.harness.charm.unit.status, BlockedStatus("Configurations are invalid: ['tac']")
         )
@@ -540,3 +549,39 @@ class TestCharm(unittest.TestCase):
         self.harness.update_config(key_values={"tac": "12345"})
 
         patched_publish_gnb_identity.assert_not_called()
+
+    @patch(f"{MULTUS_LIB_PATH}.KubernetesMultusCharmLib.is_ready")
+    @patch(f"{MULTUS_LIB_PATH}.KubernetesMultusCharmLib.multus_is_available")
+    def test_given_multus_disabled_then_status_is_blocked(
+        self, patch_multus_available, patch_multus_is_ready
+    ):
+        patch_multus_is_ready.return_value = True
+        patch_multus_available.return_value = False
+        self.harness.handle_exec("gnbsim", [], result=0)
+        self.harness.add_storage("config", attach=True)
+        self.harness.set_can_connect(container="gnbsim", val=True)
+        self._n2_data_available()
+
+        self.harness.charm.on.update_status.emit()
+        self.harness.evaluate_status()
+
+        self.assertEqual(
+            self.harness.charm.unit.status, BlockedStatus("Multus is not installed or enabled")
+        )
+
+    @patch(f"{MULTUS_LIB_PATH}.KubernetesMultusCharmLib.is_ready")
+    @patch(f"{MULTUS_LIB_PATH}.KubernetesMultusCharmLib.multus_is_available")
+    def test_given_multus_disabled_then_enabled_then_status_is_active(
+        self, patch_multus_available, patch_multus_is_ready
+    ):
+        patch_multus_is_ready.return_value = True
+        patch_multus_available.side_effect = [False, False, True, True]
+        self.harness.handle_exec("gnbsim", [], result=0)
+        self.harness.add_storage("config", attach=True)
+        self.harness.set_can_connect(container="gnbsim", val=True)
+        self._n2_data_available()
+
+        self.harness.charm.on.update_status.emit()
+        self.harness.evaluate_status()
+
+        self.assertEqual(self.harness.charm.unit.status, ActiveStatus())

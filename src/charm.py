@@ -24,10 +24,10 @@ from charms.sdcore_gnbsim_k8s.v0.fiveg_gnb_identity import (  # type: ignore[imp
 from jinja2 import Environment, FileSystemLoader
 from lightkube.models.core_v1 import ServicePort
 from lightkube.models.meta_v1 import ObjectMeta
+from ops import ActiveStatus, BlockedStatus, CollectStatusEvent, WaitingStatus
 from ops.charm import ActionEvent, CharmBase, CharmEvents
 from ops.framework import EventBase, EventSource, Handle
 from ops.main import main
-from ops.model import ActiveStatus, BlockedStatus, WaitingStatus
 from ops.pebble import ChangeError, ExecError
 
 logger = logging.getLogger(__name__)
@@ -80,6 +80,7 @@ class GNBSIMOperatorCharm(CharmBase):
         )
         self._gnb_identity_provider = GnbIdentityProvides(self, GNB_IDENTITY_RELATION_NAME)
         self._logging = LogForwarder(charm=self, relation_name=LOGGING_RELATION_NAME)
+        self.framework.observe(self.on.collect_unit_status, self._on_collect_unit_status)
         self.framework.observe(self.on.update_status, self._configure)
         self.framework.observe(self.on.config_changed, self._configure)
         self.framework.observe(self.on.gnbsim_pebble_ready, self._configure)
@@ -92,6 +93,41 @@ class GNBSIMOperatorCharm(CharmBase):
             self._configure,
         )
 
+    def _on_collect_unit_status(self, event: CollectStatusEvent):
+        """Check the unit status and set to Unit when CollectStatusEvent is fired.
+
+        Args:
+            event: CollectStatusEvent
+        """
+        if invalid_configs := self._get_invalid_configs():
+            event.add_status(BlockedStatus(f"Configurations are invalid: {invalid_configs}"))
+            logger.info(f"Configurations are invalid: {invalid_configs}")
+            return
+        if not self._relation_created(N2_RELATION_NAME):
+            event.add_status(BlockedStatus("Waiting for N2 relation to be created"))
+            logger.info("Waiting for N2 relation to be created")
+            return
+        if not self._container.can_connect():
+            event.add_status(WaitingStatus("Waiting for container to be ready"))
+            logger.info("Waiting for container to be ready")
+            return
+        if not self._container.exists(path=BASE_CONFIG_PATH):
+            event.add_status(WaitingStatus("Waiting for storage to be attached"))
+            logger.info("Waiting for storage to be attached")
+            return
+        if not self._kubernetes_multus.multus_is_available():
+            event.add_status(BlockedStatus("Multus is not installed or enabled"))
+            logger.info("Multus is not installed or enabled")
+        if not self._kubernetes_multus.is_ready():
+            event.add_status(WaitingStatus("Waiting for Multus to be ready"))
+            logger.info("Waiting for Multus to be ready")
+            return
+        if not self._n2_requirer.amf_hostname or not self._n2_requirer.amf_port:
+            event.add_status(WaitingStatus("Waiting for N2 information"))
+            logger.info("Waiting for N2 information")
+            return
+        event.add_status(ActiveStatus())
+
     def _configure(self, event: EventBase) -> None:
         """Juju event handler.
 
@@ -100,25 +136,20 @@ class GNBSIMOperatorCharm(CharmBase):
         Args:
             event: Juju event
         """
-        if invalid_configs := self._get_invalid_configs():
-            self.unit.status = BlockedStatus(f"Configurations are invalid: {invalid_configs}")
+        if self._get_invalid_configs():
             return
         self.on.nad_config_changed.emit()
         if not self._relation_created(N2_RELATION_NAME):
-            self.unit.status = BlockedStatus("Waiting for N2 relation to be created")
             return
         if not self._container.can_connect():
-            self.unit.status = WaitingStatus("Waiting for container to be ready")
             return
         if not self._container.exists(path=BASE_CONFIG_PATH):
-            self.unit.status = WaitingStatus("Waiting for storage to be attached")
+            return
+        if not self._kubernetes_multus.multus_is_available():
             return
         if not self._kubernetes_multus.is_ready():
-            self.unit.status = WaitingStatus("Waiting for Multus to be ready")
             return
-
         if not self._n2_requirer.amf_hostname or not self._n2_requirer.amf_port:
-            self.unit.status = WaitingStatus("Waiting for N2 information")
             return
 
         content = self._render_config_file(
@@ -139,7 +170,6 @@ class GNBSIMOperatorCharm(CharmBase):
         self._write_config_file(content=content)
         self._update_fiveg_gnb_identity_relation_data()
         self._create_upf_route()
-        self.unit.status = ActiveStatus()
 
     def _on_start_simulation_action(self, event: ActionEvent) -> None:
         """Runs gnbsim simulation leveraging configuration file."""
