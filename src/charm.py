@@ -24,10 +24,10 @@ from charms.sdcore_gnbsim_k8s.v0.fiveg_gnb_identity import (  # type: ignore[imp
 from jinja2 import Environment, FileSystemLoader
 from lightkube.models.core_v1 import ServicePort
 from lightkube.models.meta_v1 import ObjectMeta
+from ops import ActiveStatus, BlockedStatus, CollectStatusEvent, WaitingStatus
 from ops.charm import ActionEvent, CharmBase, CharmEvents
 from ops.framework import EventBase, EventSource, Handle
 from ops.main import main
-from ops import ActiveStatus, BlockedStatus, WaitingStatus, CollectStatusEvent
 from ops.pebble import ChangeError, ExecError
 
 logger = logging.getLogger(__name__)
@@ -115,6 +115,9 @@ class GNBSIMOperatorCharm(CharmBase):
             event.add_status(WaitingStatus("Waiting for storage to be attached"))
             logger.info("Waiting for storage to be attached")
             return
+        if not self._kubernetes_multus.multus_is_available():
+            event.add_status(BlockedStatus("Multus is not installed or enabled"))
+            logger.info("Multus is not installed or enabled")
         if not self._kubernetes_multus.is_ready():
             event.add_status(WaitingStatus("Waiting for Multus to be ready"))
             logger.info("Waiting for Multus to be ready")
@@ -142,9 +145,10 @@ class GNBSIMOperatorCharm(CharmBase):
             return
         if not self._container.exists(path=BASE_CONFIG_PATH):
             return
+        if not self._kubernetes_multus.multus_is_available():
+            return
         if not self._kubernetes_multus.is_ready():
             return
-
         if not self._n2_requirer.amf_hostname or not self._n2_requirer.amf_port:
             return
 
