@@ -59,7 +59,8 @@ jobs:
       branch-name: ${{ github.ref_name }}
       charm-file-name: "sdcore-gnbsim-k8s_ubuntu-22.04-amd64.charm"
       track-name: 1.3
-      secrets: inherit
+    secrets:
+      CHARMCRAFT_AUTH: ${{ secrets.CHARMCRAFT_AUTH }}
 
   fiveg-gnb-identity-lib-needs-publishing:
     runs-on: ubuntu-22.04
