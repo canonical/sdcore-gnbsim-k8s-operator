@@ -5,18 +5,17 @@ import json
 import unittest
 from unittest.mock import Mock, call, patch
 
+from charm import GNBSIMOperatorCharm
 from ops import testing
 from ops.model import ActiveStatus, BlockedStatus, WaitingStatus
 from ops.pebble import ChangeError
-
-from charm import GNBSIMOperatorCharm
 
 MULTUS_LIB_PATH = "charms.kubernetes_charm_libraries.v0.multus"
 GNB_IDENTITY_LIB_PATH = "charms.sdcore_gnbsim_k8s.v0.fiveg_gnb_identity"
 
 
 def read_file(path: str) -> str:
-    """Reads a file and returns as a string.
+    """Read a file and returns as a string.
 
     Args:
         path (str): path to the file.
@@ -52,7 +51,7 @@ class TestCharm(unittest.TestCase):
         self.assertEqual(self.harness.charm.unit.status, ActiveStatus())
 
     def _create_n2_relation(self) -> int:
-        """Creates a relation between gnbsim and amf.
+        """Create a relation between gnbsim and amf.
 
         Returns:
             int: Id of the created relation
@@ -62,7 +61,7 @@ class TestCharm(unittest.TestCase):
         return amf_relation_id
 
     def _n2_data_available(self) -> int:
-        """Creates the N2 relation, sets the relation data in the n2 relation and returns its ID.
+        """Create the N2 relation, sets the relation data in the n2 relation and returns its ID.
 
         Returns:
             int: ID of the created relation

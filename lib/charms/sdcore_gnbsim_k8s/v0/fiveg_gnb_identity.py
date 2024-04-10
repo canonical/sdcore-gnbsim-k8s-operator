@@ -97,7 +97,7 @@ LIBAPI = 0
 
 # Increment this PATCH version before using `charmcraft publish-lib` or reset
 # to 0 if you are raising the major API version
-LIBPATCH = 1
+LIBPATCH = 2
 
 PYDEPS = ["pydantic", "pytest-interface-tester"]
 
@@ -141,7 +141,7 @@ class ProviderSchema(DataBagSchema):
 
 
 def data_matches_provider_schema(data: dict) -> bool:
-    """Returns whether data matches provider schema.
+    """Return whether data matches provider schema.
 
     Args:
         data (dict): Data to be validated.
@@ -161,7 +161,7 @@ class FivegGnbIdentityRequestEvent(EventBase):
     """Dataclass for the `fiveg_gnb_identity` request event."""
 
     def __init__(self, handle: Handle, relation_id: int):
-        """Sets relation id.
+        """Set relation id.
 
         Args:
             handle (Handle): Juju framework handle.
@@ -171,7 +171,7 @@ class FivegGnbIdentityRequestEvent(EventBase):
         self.relation_id = relation_id
 
     def snapshot(self) -> dict:
-        """Returns event data.
+        """Return event data.
 
         Returns:
             (dict): contains the relation ID.
@@ -181,7 +181,7 @@ class FivegGnbIdentityRequestEvent(EventBase):
         }
 
     def restore(self, snapshot: dict) -> None:
-        """Restores event data.
+        """Restore event data.
 
         Args:
             snapshot (dict): contains the relation ID.
@@ -201,7 +201,7 @@ class GnbIdentityProvides(Object):
     on = GnbIdentityProviderCharmEvents()
 
     def __init__(self, charm: CharmBase, relation_name: str):
-        """Observes relation joined event.
+        """Observe relation joined event.
 
         Args:
             charm: Juju charm
@@ -215,7 +215,7 @@ class GnbIdentityProvides(Object):
     def publish_gnb_identity_information(
             self, relation_id: int, gnb_name: str, tac: int
     ) -> None:
-        """Sets gNodeB's name and TAC in the relation data.
+        """Set gNodeB's name and TAC in the relation data.
 
         Args:
             relation_id (str): Relation ID
@@ -247,20 +247,21 @@ class GnbIdentityAvailableEvent(EventBase):
     """Dataclass for the `fiveg_gnb_identity` available event."""
 
     def __init__(self, handle: Handle, gnb_name: str, tac: str):
-        """Sets gNodeB's name and TAC."""
+        """Set gNodeB's name and TAC."""
         super().__init__(handle)
         self.gnb_name = gnb_name
         self.tac = tac
 
     def snapshot(self) -> dict:
-        """Returns event data."""
+        """Return event data."""
         return {
             "gnb_name": self.gnb_name,
             "tac": self.tac,
         }
 
     def restore(self, snapshot: dict) -> None:
-        """Restores event data.
+        """Restore event data.
+
         Args:
             snapshot (dict): contains information to be restored.
         """
