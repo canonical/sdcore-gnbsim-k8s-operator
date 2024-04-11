@@ -6,7 +6,7 @@
 
 import json
 import logging
-from typing import List, Optional, Tuple
+from typing import List, Optional, Tuple, cast
 
 from charms.kubernetes_charm_libraries.v0.multus import (  # type: ignore[import]
     KubernetesMultusCharmLib,
@@ -255,46 +255,46 @@ class GNBSIMOperatorCharm(CharmBase):
             )
 
     def _get_gnb_ip_address_from_config(self) -> Optional[str]:
-        return self.model.config.get("gnb-ip-address")
+        return cast(Optional[str], self.model.config.get("gnb-ip-address"))
 
     def _get_gnb_interface_from_config(self) -> Optional[str]:
-        return self.model.config.get("gnb-interface")
+        return cast(Optional[str], self.model.config.get("gnb-interface"))
 
     def _get_icmp_packet_destination_from_config(self) -> Optional[str]:
-        return self.model.config.get("icmp-packet-destination")
+        return cast(Optional[str], self.model.config.get("icmp-packet-destination"))
 
     def _get_imsi_from_config(self) -> Optional[str]:
-        return self.model.config.get("imsi")
+        return cast(Optional[str], self.model.config.get("imsi"))
 
     def _get_mcc_from_config(self) -> Optional[str]:
-        return self.model.config.get("mcc")
+        return cast(Optional[str], self.model.config.get("mcc"))
 
     def _get_mnc_from_config(self) -> Optional[str]:
-        return self.model.config.get("mnc")
+        return cast(Optional[str], self.model.config.get("mnc"))
 
     def _get_sd_from_config(self) -> Optional[str]:
-        return self.model.config.get("sd")
+        return cast(Optional[str], self.model.config.get("sd"))
 
     def _get_sst_from_config(self) -> Optional[int]:
         return int(self.model.config.get("sst"))  # type: ignore[arg-type]
 
     def _get_tac_from_config(self) -> Optional[str]:
-        return self.model.config.get("tac")
+        return cast(Optional[str], self.model.config.get("tac"))
 
     def _get_upf_gateway_from_config(self) -> Optional[str]:
-        return self.model.config.get("upf-gateway")
+        return cast(Optional[str], self.model.config.get("upf-gateway"))
 
     def _get_upf_subnet_from_config(self) -> Optional[str]:
-        return self.model.config.get("upf-subnet")
+        return cast(Optional[str], self.model.config.get("upf-subnet"))
 
     def _get_usim_key_from_config(self) -> Optional[str]:
-        return self.model.config.get("usim-key")
+        return cast(Optional[str], self.model.config.get("usim-key"))
 
     def _get_usim_opc_from_config(self) -> Optional[str]:
-        return self.model.config.get("usim-opc")
+        return cast(Optional[str], self.model.config.get("usim-opc"))
 
     def _get_usim_sequence_number_from_config(self) -> Optional[str]:
-        return self.model.config.get("usim-sequence-number")
+        return cast(Optional[str], self.model.config.get("usim-sequence-number"))
 
     def _write_config_file(self, content: str) -> None:
         self._container.push(source=content, path=f"{BASE_CONFIG_PATH}/{CONFIG_FILE_NAME}")
