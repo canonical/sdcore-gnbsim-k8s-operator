@@ -15,7 +15,7 @@ class WhateverCharm(CharmBase):
     TEST_TAC = ""
 
     def __init__(self, *args):
-        """Creates a new instance of this object for each event."""
+        """Create a new instance of this object for each event."""
         super().__init__(*args)
         self.gnb_identity_provider = GnbIdentityProvides(self, "fiveg_gnb_identity")
 

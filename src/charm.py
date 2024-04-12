@@ -171,7 +171,7 @@ class GNBSIMOperatorCharm(CharmBase):
         self._create_upf_route()
 
     def _on_start_simulation_action(self, event: ActionEvent) -> None:
-        """Runs gnbsim simulation leveraging configuration file."""
+        """Run gnbsim simulation leveraging configuration file."""
         if not self._container.can_connect():
             event.fail(message="Container is not ready")
             return
@@ -198,7 +198,7 @@ class GNBSIMOperatorCharm(CharmBase):
             event.fail(message=f"Failed to execute simulation: {e.err}")
 
     def _generate_network_annotations(self) -> List[NetworkAnnotation]:
-        """Generates a list of NetworkAnnotations to be used by gnbsim's StatefulSet.
+        """Generate a list of NetworkAnnotations to be used by gnbsim's StatefulSet.
 
         Returns:
             List[NetworkAnnotation]: List of NetworkAnnotations
@@ -210,7 +210,7 @@ class GNBSIMOperatorCharm(CharmBase):
         ]
 
     def _network_attachment_definitions_from_config(self) -> list[NetworkAttachmentDefinition]:
-        """Returns list of Multus NetworkAttachmentDefinitions to be created based on config."""
+        """Return list of Multus NetworkAttachmentDefinitions to be created based on config."""
         gnb_nad_config = {
             "cniVersion": "0.3.1",
             "ipam": {
@@ -235,7 +235,7 @@ class GNBSIMOperatorCharm(CharmBase):
         ]
 
     def _update_fiveg_gnb_identity_relation_data(self) -> None:
-        """Publishes GNB name and TAC in the `fiveg_gnb_identity` relation data bag."""
+        """Publish GNB name and TAC in the `fiveg_gnb_identity` relation data bag."""
         if not self.unit.is_leader():
             return
         fiveg_gnb_identity_relations = self.model.relations.get(GNB_IDENTITY_RELATION_NAME)
@@ -322,7 +322,7 @@ class GNBSIMOperatorCharm(CharmBase):
         usim_opc: str,
         usim_sequence_number: str,
     ) -> str:
-        """Renders config file based on parameters.
+        """Render config file based on parameters.
 
         Args:
             amf_hostname: AMF hostname
@@ -361,7 +361,7 @@ class GNBSIMOperatorCharm(CharmBase):
         )
 
     def _get_invalid_configs(self) -> list[str]:  # noqa: C901
-        """Gets list of invalid Juju configurations."""
+        """Get list of invalid Juju configurations."""
         invalid_configs = []
         if not self._get_gnb_ip_address_from_config():
             invalid_configs.append("gnb-ip-address")
@@ -392,7 +392,7 @@ class GNBSIMOperatorCharm(CharmBase):
         return invalid_configs
 
     def _create_upf_route(self) -> None:
-        """Creates route to reach the UPF."""
+        """Create route to reach the UPF."""
         self._exec_command_in_workload(
             command=f"ip route replace {self._get_upf_subnet_from_config()} via {self._get_upf_gateway_from_config()}"  # noqa: E501
         )
@@ -402,7 +402,7 @@ class GNBSIMOperatorCharm(CharmBase):
         self,
         command: str,
     ) -> Tuple[Optional[str], Optional[str]]:
-        """Executes command in workload container.
+        """Execute command in workload container.
 
         Args:
             command: Command to execute
@@ -414,7 +414,7 @@ class GNBSIMOperatorCharm(CharmBase):
         return process.wait_output()
 
     def _relation_created(self, relation_name: str) -> bool:
-        """Returns whether a given Juju relation was crated.
+        """Return whether a given Juju relation was created.
 
         Args:
             relation_name (str): Relation name
