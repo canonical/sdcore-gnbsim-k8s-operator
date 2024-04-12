@@ -112,7 +112,7 @@ LIBAPI = 0
 
 # Increment this PATCH version before using `charmcraft publish-lib` or reset
 # to 0 if you are raising the major API version
-LIBPATCH = 1
+LIBPATCH = 2
 
 logger = logging.getLogger(__name__)
 """Schemas definition for the provider and requirer sides of the `fiveg_n2` interface.
@@ -152,7 +152,7 @@ class ProviderSchema(DataBagSchema):
 
 
 def data_is_valid(data: dict) -> bool:
-    """Returns whether data is valid.
+    """Return whether data is valid.
 
     Args:
         data (dict): Data to be validated.
@@ -179,7 +179,7 @@ class N2InformationAvailableEvent(EventBase):
         self.amf_port = amf_port
 
     def snapshot(self) -> dict:
-        """Returns snapshot."""
+        """Return snapshot."""
         return {
             "amf_ip_address": self.amf_ip_address,
             "amf_hostname": self.amf_hostname,
@@ -212,7 +212,7 @@ class N2Requires(Object):
         self.framework.observe(charm.on[relation_name].relation_changed, self._on_relation_changed)
 
     def _on_relation_changed(self, event: RelationChangedEvent) -> None:
-        """Handler triggered on relation changed event.
+        """Handle relation changed event.
 
         Args:
             event (RelationChangedEvent): Juju event.
@@ -229,7 +229,7 @@ class N2Requires(Object):
 
     @property
     def amf_ip_address(self) -> Optional[str]:
-        """Returns AMF IP address.
+        """Return AMF IP address.
 
         Returns:
             str: AMF IP address.
@@ -240,7 +240,7 @@ class N2Requires(Object):
 
     @property
     def amf_hostname(self) -> Optional[str]:
-        """Returns AMF hostname.
+        """Return AMF hostname.
 
         Returns:
             str: AMF hostname.
@@ -251,7 +251,7 @@ class N2Requires(Object):
 
     @property
     def amf_port(self) -> Optional[int]:
-        """Returns the port used to connect to the AMF host.
+        """Return the port used to connect to the AMF host.
 
         Returns:
             int: AMF port.
@@ -266,7 +266,7 @@ class N2Requires(Object):
         """Get relation data for the remote application.
 
         Args:
-            Relation: Juju relation object (optional).
+            relation: Juju relation object (optional).
 
         Returns:
             Dict: Relation data for the remote application
@@ -296,7 +296,7 @@ class N2Provides(Object):
         self.charm = charm
 
     def set_n2_information(self, amf_ip_address: str, amf_hostname: str, amf_port: int) -> None:
-        """Sets the hostname and the ngapp port in the application relation data.
+        """Set the hostname and the ngapp port in the application relation data.
 
         Args:
             amf_ip_address (str): AMF IP address.
