@@ -6,7 +6,8 @@
 This library contains the Requires and Provides classes for handling the `fiveg_gnb_identity`
 interface.
 
-The purpose of this library is to provide a way for gNodeB's to share their identity with the charms which require this information.
+The purpose of this library is to provide a way for gNodeB's to share their identity with the
+charms which require this information.
 
 To get started using the library, you need to fetch the library using `charmcraft`.
 
@@ -31,9 +32,15 @@ Typical usage of this class would look something like:
 
         def __init__(self, *args):
             ...
-            self.gnb_identity_provider = GnbIdentityProvides(charm=self, relation_name="fiveg_gnb_identity")
+            self.gnb_identity_provider = GnbIdentityProvides(
+                charm=self,
+                relation_name="fiveg_gnb_identity"
+                )
             ...
-            self.framework.observe(self.gnb_identity_provider.on.fiveg_gnb_identity_request, self._on_fiveg_gnb_identity_request)
+            self.framework.observe(
+                self.gnb_identity_provider.on.fiveg_gnb_identity_request,
+                self._on_fiveg_gnb_identity_request
+            )
 
         def _on_fiveg_gnb_identity_request(self, event):
             ...
@@ -63,7 +70,10 @@ Typical usage of this class would look something like:
 
         def __init__(self, *args):
             ...
-            self.fiveg_gnb_identity = GnbIdentityRequires(charm=self, relation_name="fiveg_gnb_identity")
+            self.fiveg_gnb_identity = GnbIdentityRequires(
+                charm=self,
+                relation_name="fiveg_gnb_identity"
+            )
             ...
             self.framework.observe(self.fiveg_gnb_identity.on.fiveg_gnb_identity_available,
                 self._on_fiveg_gnb_identity_available)
@@ -97,7 +107,7 @@ LIBAPI = 0
 
 # Increment this PATCH version before using `charmcraft publish-lib` or reset
 # to 0 if you are raising the major API version
-LIBPATCH = 2
+LIBPATCH = 3
 
 PYDEPS = ["pydantic", "pytest-interface-tester"]
 
@@ -294,7 +304,7 @@ class GnbIdentityRequires(Object):
         self.framework.observe(charm.on[relation_name].relation_changed, self._on_relation_changed)
 
     def _on_relation_changed(self, event: RelationChangedEvent) -> None:
-        """Triggered everytime there's a change in relation data.
+        """Triggered every time there's a change in relation data.
 
         Args:
             event (RelationChangedEvent): Juju event
