@@ -19,6 +19,7 @@ extend-ignore = [
     "D204",
     "D213",
     "D215",
+    "D107",
     "D400",
     "D404",
     "D406",
@@ -27,7 +28,6 @@ extend-ignore = [
     "D409",
     "D413",
 ]
-ignore = ["E501", "D107"]
 per-file-ignores = {"tests/*" = ["D100","D101","D102","D103","D104"]}
 
 [tool.ruff.lint.mccabe]
