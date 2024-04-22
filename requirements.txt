@@ -55,7 +55,7 @@ kubernetes==29.0.0
     # via juju
 lightkube==0.15.2
     # via -r requirements.in
-lightkube-models==1.29.0.7
+lightkube-models==1.30.0.7
     # via
     #   -r requirements.in
     #   lightkube
