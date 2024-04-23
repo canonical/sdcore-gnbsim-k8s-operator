@@ -4,6 +4,7 @@ juju
 mypy
 pytest
 pytest-operator
+pytest-mock
 ruff
 types-PyYAML
 types-setuptools
