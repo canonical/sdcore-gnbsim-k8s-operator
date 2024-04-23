@@ -2,17 +2,16 @@
 # See LICENSE file for licensing details.
 
 import json
-import unittest
-from unittest.mock import Mock, call, patch
 
+import pytest
 from charm import GNBSIMOperatorCharm
 from ops import testing
 from ops.model import ActiveStatus, BlockedStatus, WaitingStatus
 from ops.pebble import ChangeError
 
-MULTUS_LIB_PATH = "charms.kubernetes_charm_libraries.v0.multus"
-GNB_IDENTITY_LIB_PATH = "charms.sdcore_gnbsim_k8s.v0.fiveg_gnb_identity"
-
+MULTUS_LIB = "charms.kubernetes_charm_libraries.v0.multus.KubernetesMultusCharmLib"
+GNB_IDENTITY_PROVIDES = "charms.sdcore_gnbsim_k8s.v0.fiveg_gnb_identity.GnbIdentityProvides"
+NAMESPACE = "whatever"
 
 def read_file(path: str) -> str:
     """Read a file and returns as a string.
@@ -27,560 +26,528 @@ def read_file(path: str) -> str:
         content = f.read()
     return content
 
+def create_n2_relation(harness) -> int:
+    """Create a relation between gnbsim and AMF.
 
-class TestCharm(unittest.TestCase):
-    @patch("lightkube.core.client.GenericSyncClient")
-    @patch(
-        "charm.KubernetesServicePatch",
-        lambda charm, ports: None,
+    Returns:
+        int: Id of the created relation
+    """
+    amf_relation_id = harness.add_relation(relation_name="fiveg-n2", remote_app="amf")
+    harness.add_relation_unit(relation_id=amf_relation_id, remote_unit_name="amf/0")
+    return amf_relation_id
+
+def set_n2_relation_data(harness) -> int:
+    """Create the N2 relation, sets the relation data in the n2 relation and returns its ID.
+
+    Returns:
+        int: ID of the created relation
+    """
+    amf_relation_id = create_n2_relation(harness)
+    harness.update_relation_data(
+        relation_id=amf_relation_id,
+        app_or_unit="amf",
+        key_values={
+            "amf_hostname": "amf",
+            "amf_port": "38412",
+            "amf_ip_address": "1.1.1.1",
+        },
     )
-    def setUp(self, patch_k8s_client):
-        self.namespace = "whatever"
-        self.harness = testing.Harness(GNBSIMOperatorCharm)
-        self.harness.set_model_name(name=self.namespace)
-        self.addCleanup(self.harness.cleanup)
-        self.harness.begin()
-
-    def set_up_active_status_charm(self, patch_multus_is_ready):
-        self.harness.handle_exec("gnbsim", [], result=0)
-        self.harness.add_storage("config", attach=True)
-        self.harness.set_can_connect(container="gnbsim", val=True)
-        self._n2_data_available()
-        patch_multus_is_ready.return_value = True
-        self.harness.evaluate_status()
-        self.assertEqual(self.harness.charm.unit.status, ActiveStatus())
-
-    def _create_n2_relation(self) -> int:
-        """Create a relation between gnbsim and amf.
-
-        Returns:
-            int: Id of the created relation
-        """
-        amf_relation_id = self.harness.add_relation(relation_name="fiveg-n2", remote_app="amf")
-        self.harness.add_relation_unit(relation_id=amf_relation_id, remote_unit_name="amf/0")
-        return amf_relation_id
-
-    def _n2_data_available(self) -> int:
-        """Create the N2 relation, sets the relation data in the n2 relation and returns its ID.
-
-        Returns:
-            int: ID of the created relation
-        """
-        amf_relation_id = self._create_n2_relation()
-        self.harness.update_relation_data(
-            relation_id=amf_relation_id,
-            app_or_unit="amf",
-            key_values={
-                "amf_hostname": "amf",
-                "amf_port": "38412",
-                "amf_ip_address": "1.1.1.1",
-            },
-        )
-        return amf_relation_id
-
-    def test_given_default_config_when_config_changed_then_status_is_blocked(
-        self,
-    ):
-        self.harness.update_config(key_values={"usim-opc": ""})
-        self.harness.evaluate_status()
-
-        self.assertEqual(
-            self.harness.charm.unit.status,
-            BlockedStatus("Configurations are invalid: ['usim-opc']"),
-        )
-
-    def test_given_cant_connect_to_workload_when_config_changed_then_status_is_waiting(
-        self,
-    ):
-        self.harness.handle_exec("gnbsim", [], result=0)
-        self.harness.add_storage("config", attach=True)
-        self._n2_data_available()
-        self.harness.set_can_connect(container="gnbsim", val=False)
-
-        self.harness.update_config(key_values={})
-        self.harness.evaluate_status()
-
-        self.assertEqual(
-            self.harness.charm.unit.status,
-            WaitingStatus("Waiting for container to be ready"),
-        )
-
-    def test_given_storage_not_attached_when_config_changed_then_status_is_waiting(
-        self,
-    ):
-        self.harness.handle_exec("gnbsim", [], result=0)
-        self.harness.set_can_connect(container="gnbsim", val=True)
-        self._n2_data_available()
-
-        self.harness.update_config(key_values={})
-        self.harness.evaluate_status()
-
-        self.assertEqual(
-            self.harness.charm.unit.status,
-            WaitingStatus("Waiting for storage to be attached"),
-        )
-
-    @patch(f"{MULTUS_LIB_PATH}.KubernetesMultusCharmLib.is_ready", Mock(return_value=False))
-    def test_given_multus_not_ready_when_config_changed_then_status_is_waiting(self):
-        self.harness.handle_exec("gnbsim", [], result=0)
-        self.harness.add_storage("config", attach=True)
-        self.harness.set_can_connect(container="gnbsim", val=True)
-
-        self._create_n2_relation()
-
-        self.harness.update_config(key_values={})
-        self.harness.evaluate_status()
-
-        self.assertEqual(
-            self.harness.charm.unit.status,
-            WaitingStatus("Waiting for Multus to be ready"),
-        )
-
-    def test_given_n2_relation_not_created_when_config_changed_then_status_is_blocked(
-        self,
-    ):
-        self.harness.handle_exec("gnbsim", [], result=0)
-        self.harness.add_storage("config", attach=True)
-        self.harness.set_can_connect(container="gnbsim", val=True)
-
-        self.harness.update_config(key_values={})
-        self.harness.evaluate_status()
-
-        self.assertEqual(
-            self.harness.charm.unit.status,
-            BlockedStatus("Waiting for N2 relation to be created"),
-        )
-
-    @patch(f"{MULTUS_LIB_PATH}.KubernetesMultusCharmLib.is_ready", Mock(return_value=True))
-    def test_given_gnbsim_charm_in_active_state_when_n2_relation_breaks_then_status_is_blocked(
-        self,
-    ):
-        self.harness.handle_exec("gnbsim", [], result=0)
-        self.harness.add_storage("config", attach=True)
-        self.harness.set_can_connect(container="gnbsim", val=True)
-        n2_relation_id = self._n2_data_available()
-
-        self.harness.remove_relation(n2_relation_id)
-        self.harness.evaluate_status()
-
-        self.assertEqual(
-            self.harness.model.unit.status, BlockedStatus("Waiting for N2 relation to be created")
-        )
-
-    @patch(f"{MULTUS_LIB_PATH}.KubernetesMultusCharmLib.is_ready", Mock(return_value=True))
-    def test_given_n2_information_not_available_when_config_changed_then_status_is_waiting(self):
-        self.harness.handle_exec("gnbsim", [], result=0)
-        self.harness.add_storage("config", attach=True)
-        self.harness.set_can_connect(container="gnbsim", val=True)
-        self._create_n2_relation()
-
-        self.harness.update_config(key_values={})
-        self.harness.evaluate_status()
-
-        self.assertEqual(
-            self.harness.charm.unit.status,
-            WaitingStatus("Waiting for N2 information"),
-        )
+    return amf_relation_id
+
+def set_up_active_status_charm(harness):
+    harness.handle_exec("gnbsim", [], result=0)
+    harness.add_storage("config", attach=True)
+    harness.set_can_connect(container="gnbsim", val=True)
+    set_n2_relation_data(harness)
+    harness.evaluate_status()
+    assert harness.charm.unit.status == ActiveStatus()
+
+
+@pytest.fixture
+def harness(mocker):
+    mocker.patch("lightkube.core.client.GenericSyncClient")
+    mocker.patch("charm.KubernetesServicePatch")
+    mocker.patch(f"{MULTUS_LIB}.is_ready", return_value=True)
+    harness = testing.Harness(GNBSIMOperatorCharm)
+    harness.set_model_name(name=NAMESPACE)
+    harness.begin()
+    yield harness
+    harness.cleanup()
+
+
+@pytest.mark.parametrize("config_param", [("usim-opc"),
+                                        ("gnb-ip-address"),
+                                        ("icmp-packet-destination"),
+                                        ("imsi"),
+                                        ("mcc"),
+                                        ("mnc"),
+                                        ("usim-key"),
+                                        ("usim-sequence-number"),
+                                        ("sd"),
+                                        ("tac"),
+                                        ("upf-subnet"),
+                                        ("upf-gateway")])
+def test_given_invalid_config_when_config_changed_then_status_is_blocked(harness, config_param):
+    harness.update_config(key_values={config_param: ""})
+    harness.evaluate_status()
+
+    assert harness.charm.unit.status == BlockedStatus(
+                                            f"Configurations are invalid: ['{config_param}']"
+                                        )
 
-    @patch(f"{MULTUS_LIB_PATH}.KubernetesMultusCharmLib.is_ready")
-    def test_given_default_config_and_n2_info_when_config_changed_then_config_is_written_to_workload(  # noqa: E501
-        self, patch_multus_is_ready
-    ):
-        self.set_up_active_status_charm(patch_multus_is_ready)
-        root = self.harness.get_filesystem_root("gnbsim")
-
-        self.harness.update_config(key_values={})
-
-        expected_config_file_content = read_file("tests/unit/expected_config.yaml")
-
-        self.assertEqual((root / "etc/gnbsim/gnb.conf").read_text(), expected_config_file_content)
-
-    @patch(f"{MULTUS_LIB_PATH}.KubernetesMultusCharmLib.is_ready")
-    def test_given_default_config_and_n2_info_available_when_n2_relation_joined_then_config_is_written_to_workload(  # noqa: E501
-        self, patch_multus_is_ready
-    ):
-        self.set_up_active_status_charm(patch_multus_is_ready)
-        root = self.harness.get_filesystem_root("gnbsim")
+def test_given_cant_connect_to_workload_when_config_changed_then_status_is_waiting(harness):
+    harness.handle_exec("gnbsim", [], result=0)
+    harness.add_storage("config", attach=True)
+    set_n2_relation_data(harness)
+    harness.set_can_connect(container="gnbsim", val=False)
 
-        expected_config_file_content = read_file("tests/unit/expected_config.yaml")
-        self.assertEqual((root / "etc/gnbsim/gnb.conf").read_text(), expected_config_file_content)
-
-    @patch(f"{MULTUS_LIB_PATH}.KubernetesMultusCharmLib.is_ready")
-    def test_given_default_config_when_config_changed_then_status_is_active(
-        self, patch_multus_is_ready
-    ):
-        self.set_up_active_status_charm(patch_multus_is_ready)
-
-        self.harness.update_config(key_values={})
-
-        self.assertEqual(self.harness.charm.unit.status, ActiveStatus())
+    harness.update_config(key_values={})
+    harness.evaluate_status()
 
-        self.harness.charm.on.update_status.emit()
+    assert harness.charm.unit.status == WaitingStatus("Waiting for container to be ready")
+
+def test_given_storage_not_attached_when_config_changed_then_status_is_waiting(harness):
+    harness.handle_exec("gnbsim", [], result=0)
+    harness.set_can_connect(container="gnbsim", val=True)
+    set_n2_relation_data(harness)
+
+    harness.update_config(key_values={})
+    harness.evaluate_status()
+
+    assert harness.charm.unit.status == WaitingStatus("Waiting for storage to be attached")
 
-    @patch(f"{MULTUS_LIB_PATH}.KubernetesMultusCharmLib.is_ready")
-    def test_given_default_config_when_update_status_emit_then_status_is_active(
-        self, patch_multus_is_ready
-    ):
-        self.set_up_active_status_charm(patch_multus_is_ready)
+def test_given_multus_not_ready_when_config_changed_then_status_is_waiting(harness, mocker):
+    mocker.patch(f"{MULTUS_LIB}.is_ready", return_value=False)
+    harness.handle_exec("gnbsim", [], result=0)
+    harness.add_storage("config", attach=True)
+    harness.set_can_connect(container="gnbsim", val=True)
+
+    create_n2_relation(harness)
+
+    harness.update_config(key_values={})
+    harness.evaluate_status()
+
+    assert harness.charm.unit.status == WaitingStatus("Waiting for Multus to be ready")
 
-        self.harness.charm.on.update_status.emit()
+def test_given_n2_relation_not_created_when_config_changed_then_status_is_blocked(harness):
+    harness.handle_exec("gnbsim", [], result=0)
+    harness.add_storage("config", attach=True)
+    harness.set_can_connect(container="gnbsim", val=True)
+
+    harness.update_config(key_values={})
+    harness.evaluate_status()
 
-        self.assertEqual(self.harness.charm.unit.status, ActiveStatus())
+    assert harness.charm.unit.status == BlockedStatus("Waiting for N2 relation to be created")
 
-    @patch(f"{MULTUS_LIB_PATH}.KubernetesMultusCharmLib.is_ready", Mock(return_value=True))
-    def test_given_default_config_when_config_changed_then_upf_route_is_created(self):
-        self.harness.add_storage("config", attach=True)
-        upf_subnet = "1.1.0.0/16"
-        upf_gateway = "2.2.2.2"
+def test_given_active_status_when_n2_relation_breaks_then_status_is_blocked(harness):
+    harness.handle_exec("gnbsim", [], result=0)
+    harness.add_storage("config", attach=True)
+    harness.set_can_connect(container="gnbsim", val=True)
+    n2_relation_id = set_n2_relation_data(harness)
+    harness.evaluate_status()
 
-        ip_route_called = False
-        timeout = 0
-        ip_route_cmd = ["ip", "route", "replace", upf_subnet, "via", upf_gateway]
+    harness.remove_relation(n2_relation_id)
+    harness.evaluate_status()
 
-        def ip_route_handler(args: testing.ExecArgs) -> testing.ExecResult:
-            nonlocal ip_route_called
-            nonlocal timeout
-            ip_route_called = True
-            timeout = args.timeout
-            return testing.ExecResult()
-
-        self.harness.handle_exec("gnbsim", ip_route_cmd, handler=ip_route_handler)
-        self.harness.handle_exec("gnbsim", [], result=0)
+    assert harness.charm.unit.status == BlockedStatus("Waiting for N2 relation to be created")
 
-        self.harness.set_can_connect(container="gnbsim", val=True)
+def test_given_n2_information_not_available_when_config_changed_then_status_is_waiting(harness):
+    harness.handle_exec("gnbsim", [], result=0)
+    harness.add_storage("config", attach=True)
+    harness.set_can_connect(container="gnbsim", val=True)
+    create_n2_relation(harness)
 
-        self._n2_data_available()
+    harness.update_config(key_values={})
+    harness.evaluate_status()
 
-        self.harness.update_config(
-            key_values={
-                "upf-subnet": upf_subnet,
-                "upf-gateway": upf_gateway,
-            }
-        )
+    assert harness.charm.unit.status == WaitingStatus("Waiting for N2 information")
 
-        self.assertTrue(ip_route_called)
-        self.assertEqual(timeout, 300)
+def test_given_default_config_and_n2_info_when_config_changed_then_config_is_written_to_workload(
+    harness,
+):
+    set_up_active_status_charm(harness)
+    root = harness.get_filesystem_root("gnbsim")
 
-    def test_given_cant_connect_to_workload_when_start_simulation_action_then_event_fails(self):
-        event = Mock()
-        self.harness.set_can_connect(container="gnbsim", val=False)
+    harness.update_config(key_values={})
 
-        self.harness.charm._on_start_simulation_action(event=event)
+    expected_config_file_content = read_file("tests/unit/expected_config.yaml")
+    assert (root / "etc/gnbsim/gnb.conf").read_text() == expected_config_file_content
 
-        event.fail.assert_called_with(message="Container is not ready")
 
-    def test_given_config_file_not_written_when_start_simulation_action_then_event_fails(
-        self,
-    ):
-        self.harness.add_storage("config", attach=True)
-        event = Mock()
-        self.harness.set_can_connect(container="gnbsim", val=True)
+def test_given_default_config_and_n2_info_available_when_n2_relation_joined_then_config_is_written_to_workload(  # noqa: E501
+    harness,
+):
+    set_up_active_status_charm(harness)
+    root = harness.get_filesystem_root("gnbsim")
 
-        self.harness.charm._on_start_simulation_action(event=event)
+    expected_config_file_content = read_file("tests/unit/expected_config.yaml")
+    assert (root / "etc/gnbsim/gnb.conf").read_text() == expected_config_file_content
 
-        event.fail.assert_called_with(message="Config file is not written")
 
-    def test_given_simulation_command_fails_with_execerror_when_start_simulation_action_then_event_fails(  # noqa: E501
-        self,
-    ):
-        self.harness.add_storage("config", attach=True)
-        root = self.harness.get_filesystem_root("gnbsim")
-        (root / "etc/gnbsim/gnb.conf").write_text(read_file("tests/unit/expected_config.yaml"))
-        stderr = "whatever stderr content"
-        event = Mock()
+def test_given_n2_relation_storage_attached_and_can_connect_when_config_changed_then_status_is_active(  # noqa: E501
+    harness
+):
+    set_up_active_status_charm(harness)
 
-        def gnbsim_handler(_: testing.ExecArgs) -> testing.ExecResult:
-            return testing.ExecResult(stderr=stderr, exit_code=1)
+    harness.update_config(key_values={})
+    harness.charm.on.update_status.emit()
 
-        self.harness.handle_exec("gnbsim", ["/bin/gnbsim"], handler=gnbsim_handler)
-        self.harness.set_can_connect(container="gnbsim", val=True)
+    assert harness.charm.unit.status == ActiveStatus()
 
-        self.harness.charm._on_start_simulation_action(event=event)
+def test_given_default_config_when_config_changed_then_upf_route_is_created(harness):
+    harness.add_storage("config", attach=True)
+    upf_subnet = "1.1.0.0/16"
+    upf_gateway = "2.2.2.2"
 
-        event.fail.assert_called_with(message=f"Failed to execute simulation: {stderr}")
+    ip_route_called = False
+    timeout = 0
+    ip_route_cmd = ["ip", "route", "replace", upf_subnet, "via", upf_gateway]
 
-    def test_given_simulation_command_fails_with_changeerror_when_start_simulation_action_then_event_fails(  # noqa: E501
-        self,
-    ):
-        self.harness.add_storage("config", attach=True)
-        root = self.harness.get_filesystem_root("gnbsim")
-        (root / "etc/gnbsim/gnb.conf").write_text(read_file("tests/unit/expected_config.yaml"))
-        error = "whatever error content"
-        event = Mock()
+    def ip_route_handler(args: testing.ExecArgs) -> testing.ExecResult:
+        nonlocal ip_route_called
+        nonlocal timeout
+        ip_route_called = True
+        timeout = args.timeout
+        return testing.ExecResult()
 
-        def gnbsim_handler(_: testing.ExecArgs) -> testing.ExecResult:
-            raise ChangeError(err=error, change=None)  # type: ignore[arg-type]
+    harness.handle_exec("gnbsim", ip_route_cmd, handler=ip_route_handler)
+    harness.handle_exec("gnbsim", [], result=0)
 
-        self.harness.handle_exec("gnbsim", ["/bin/gnbsim"], handler=gnbsim_handler)
-        self.harness.set_can_connect(container="gnbsim", val=True)
+    harness.set_can_connect(container="gnbsim", val=True)
 
-        self.harness.charm._on_start_simulation_action(event=event)
+    set_n2_relation_data(harness)
 
-        event.fail.assert_called_with(message=f"Failed to execute simulation: {error}")
+    harness.update_config(
+        key_values={
+            "upf-subnet": upf_subnet,
+            "upf-gateway": upf_gateway,
+        }
+    )
 
-    def test_given_no_stderr_when_start_simulation_action_then_event_fails(self):
-        self.harness.add_storage("config", attach=True)
-        root = self.harness.get_filesystem_root("gnbsim")
-        (root / "etc/gnbsim/gnb.conf").write_text(read_file("tests/unit/expected_config.yaml"))
-        event = Mock()
+    assert ip_route_called
+    assert timeout == 300
 
-        self.harness.handle_exec("gnbsim", ["/bin/gnbsim"], result=0)
-        self.harness.set_can_connect(container="gnbsim", val=True)
+def test_given_cant_connect_to_workload_when_start_simulation_action_then_event_fails(
+    harness, mocker
+):
+    event = mocker.Mock()
+    harness.set_can_connect(container="gnbsim", val=False)
 
-        self.harness.charm._on_start_simulation_action(event=event)
+    harness.charm._on_start_simulation_action(event=event)
 
-        event.fail.assert_called_with(message="No output in simulation")
+    event.fail.assert_called_once_with(message="Container is not ready")
 
-    def test_given_simulation_fails_when_start_simulation_action_then_simulation_result_is_false(
-        self,
-    ):
-        self.harness.add_storage("config", attach=True)
-        root = self.harness.get_filesystem_root("gnbsim")
-        (root / "etc/gnbsim/gnb.conf").write_text(read_file("tests/unit/expected_config.yaml"))
-        event = Mock()
 
-        def gnbsim_handler(_: testing.ExecArgs) -> testing.ExecResult:
-            return testing.ExecResult(
-                stdout="whatever stdout",
-                stderr="Profile Status: FAILED",
-            )
+def test_given_config_file_not_written_when_start_simulation_action_then_event_fails(
+    harness, mocker
+):
+    event = mocker.Mock()
+    harness.set_can_connect(container="gnbsim", val=True)
+    harness.add_storage("config", attach=True)
 
-        self.harness.handle_exec("gnbsim", ["/bin/gnbsim"], handler=gnbsim_handler)
-        self.harness.set_can_connect(container="gnbsim", val=True)
+    harness.charm._on_start_simulation_action(event=event)
 
-        self.harness.charm._on_start_simulation_action(event=event)
+    event.fail.assert_called_with(message="Config file is not written")
 
-        event.set_results.assert_called_with(
-            {"success": "false", "info": "run juju debug-log to get more information."}
+def test_given_simulation_command_fails_with_execerror_when_start_simulation_action_then_event_fails(  # noqa: E501
+    harness, mocker
+):
+    harness.add_storage("config", attach=True)
+    root = harness.get_filesystem_root("gnbsim")
+    (root / "etc/gnbsim/gnb.conf").write_text(read_file("tests/unit/expected_config.yaml"))
+    stderr = "whatever stderr content"
+    event = mocker.Mock()
+
+    def gnbsim_handler(_: testing.ExecArgs) -> testing.ExecResult:
+        return testing.ExecResult(stderr=stderr, exit_code=1)
+
+    harness.handle_exec("gnbsim", ["/bin/gnbsim"], handler=gnbsim_handler)
+    harness.set_can_connect(container="gnbsim", val=True)
+
+    harness.charm._on_start_simulation_action(event=event)
+
+    event.fail.assert_called_with(message=f"Failed to execute simulation: {stderr}")
+
+def test_given_simulation_command_fails_with_changeerror_when_start_simulation_action_then_event_fails(  # noqa: E501
+    harness, mocker
+):
+    harness.add_storage("config", attach=True)
+    root = harness.get_filesystem_root("gnbsim")
+    (root / "etc/gnbsim/gnb.conf").write_text(read_file("tests/unit/expected_config.yaml"))
+    error = "whatever error content"
+    event = mocker.Mock()
+
+    def gnbsim_handler(_: testing.ExecArgs) -> testing.ExecResult:
+        raise ChangeError(err=error, change=None)  # type: ignore[arg-type]
+
+    harness.handle_exec("gnbsim", ["/bin/gnbsim"], handler=gnbsim_handler)
+    harness.set_can_connect(container="gnbsim", val=True)
+
+    harness.charm._on_start_simulation_action(event=event)
+
+    event.fail.assert_called_with(message=f"Failed to execute simulation: {error}")
+
+def test_given_no_stderr_when_start_simulation_action_then_event_fails(harness, mocker):
+    harness.add_storage("config", attach=True)
+    root = harness.get_filesystem_root("gnbsim")
+    (root / "etc/gnbsim/gnb.conf").write_text(read_file("tests/unit/expected_config.yaml"))
+    event = mocker.Mock()
+    harness.handle_exec("gnbsim", ["/bin/gnbsim"], result=0)
+    harness.set_can_connect(container="gnbsim", val=True)
+
+    harness.charm._on_start_simulation_action(event=event)
+
+    event.fail.assert_called_with(message="No output in simulation")
+
+def test_given_simulation_fails_when_start_simulation_action_then_simulation_result_is_false(
+    harness, mocker
+):
+    harness.add_storage("config", attach=True)
+    root = harness.get_filesystem_root("gnbsim")
+    (root / "etc/gnbsim/gnb.conf").write_text(read_file("tests/unit/expected_config.yaml"))
+    event = mocker.Mock()
+
+    def gnbsim_handler(_: testing.ExecArgs) -> testing.ExecResult:
+        return testing.ExecResult(
+            stdout="whatever stdout",
+            stderr="Profile Status: FAILED",
         )
 
-    def test_given_can_connect_to_workload_when_start_simulation_action_then_simulation_is_started(
-        self,
-    ):
-        self.harness.add_storage("config", attach=True)
-        root = self.harness.get_filesystem_root("gnbsim")
-        (root / "etc/gnbsim/gnb.conf").write_text(read_file("tests/unit/expected_config.yaml"))
-        event = Mock()
+    harness.handle_exec("gnbsim", ["/bin/gnbsim"], handler=gnbsim_handler)
+    harness.set_can_connect(container="gnbsim", val=True)
 
-        gnbsim_called = False
-        timeout = 0
-        gnbsim_cmd = ["/bin/gnbsim", "--cfg", "/etc/gnbsim/gnb.conf"]
+    harness.charm._on_start_simulation_action(event=event)
 
-        def gnbsim_handler(args: testing.ExecArgs) -> testing.ExecResult:
-            nonlocal gnbsim_called
-            nonlocal timeout
-            gnbsim_called = True
-            timeout = args.timeout
-            return testing.ExecResult(
-                stdout="Whatever stdout",
-                stderr="Whatever stderr",
-            )
+    event.set_results.assert_called_with(
+        {"success": "false", "info": "run juju debug-log to get more information."}
+    )
 
-        self.harness.handle_exec("gnbsim", gnbsim_cmd, handler=gnbsim_handler)
-        self.harness.set_can_connect(container="gnbsim", val=True)
+def test_given_can_connect_to_workload_when_start_simulation_action_then_simulation_is_started(
+    harness, mocker
+):
+    harness.add_storage("config", attach=True)
+    root = harness.get_filesystem_root("gnbsim")
+    (root / "etc/gnbsim/gnb.conf").write_text(read_file("tests/unit/expected_config.yaml"))
+    event = mocker.Mock()
 
-        self.harness.charm._on_start_simulation_action(event=event)
+    gnbsim_called = False
+    timeout = 0
+    gnbsim_cmd = ["/bin/gnbsim", "--cfg", "/etc/gnbsim/gnb.conf"]
 
-        self.assertTrue(gnbsim_called)
-        self.assertEqual(timeout, 300)
-
-    def test_given_simulation_succeeds_when_start_simulation_action_then_simulation_result_is_true(
-        self,
-    ):
-        self.harness.add_storage("config", attach=True)
-        root = self.harness.get_filesystem_root("gnbsim")
-        (root / "etc/gnbsim/gnb.conf").write_text(read_file("tests/unit/expected_config.yaml"))
-        event = Mock()
-
-        def gnbsim_handler(_: testing.ExecArgs) -> testing.ExecResult:
-            return testing.ExecResult(
-                stdout="whatever stdout",
-                stderr="Profile Status: PASS",
-            )
-
-        self.harness.handle_exec("gnbsim", ["/bin/gnbsim"], handler=gnbsim_handler)
-        self.harness.set_can_connect(container="gnbsim", val=True)
-
-        self.harness.charm._on_start_simulation_action(event=event)
-
-        event.set_results.assert_called_with(
-            {"success": "true", "info": "run juju debug-log to get more information."}
+    def gnbsim_handler(args: testing.ExecArgs) -> testing.ExecResult:
+        nonlocal gnbsim_called
+        nonlocal timeout
+        gnbsim_called = True
+        timeout = args.timeout
+        return testing.ExecResult(
+            stdout="Whatever stdout",
+            stderr="Whatever stderr",
         )
 
-    def test_given_default_config_when_network_attachment_definitions_from_config_is_called_then_no_interface_specified_in_nad(  # noqa: E501
-        self,
-    ):
-        self.harness.disable_hooks()
-        self.harness.update_config(
-            key_values={
-                "gnb-ip-address": "192.168.251.5",
-            }
-        )
-        nad = self.harness.charm._network_attachment_definitions_from_config()
-        config = json.loads(nad[0].spec["config"])
-        self.assertNotIn("master", config)
-        self.assertEqual("bridge", config["type"])
-        self.assertEqual(config["bridge"], "ran-br")
+    harness.handle_exec("gnbsim", gnbsim_cmd, handler=gnbsim_handler)
+    harness.set_can_connect(container="gnbsim", val=True)
 
-    def test_given_default_config_with_interfaces_when_network_attachment_definitions_from_config_is_called_then_interfaces_specified_in_nad(  # noqa: E501
-        self,
-    ):
-        self.harness.disable_hooks()
-        self.harness.update_config(
-            key_values={
-                "gnb-ip-address": "192.168.251.5",
-                "gnb-interface": "gnb",
-            }
-        )
-        nad = self.harness.charm._network_attachment_definitions_from_config()
-        config = json.loads(nad[0].spec["config"])
-        self.assertEqual(config["master"], "gnb")
-        self.assertEqual(config["type"], "macvlan")
+    harness.charm._on_start_simulation_action(event=event)
 
-    @patch(f"{MULTUS_LIB_PATH}.KubernetesMultusCharmLib.is_ready")
-    @patch(f"{GNB_IDENTITY_LIB_PATH}.GnbIdentityProvides.publish_gnb_identity_information")
-    def test_given_fiveg_gnb_identity_relation_created_then_gnb_name_and_tac_are_published(
-        self, patched_publish_gnb_identity, patch_multus_is_ready
-    ):
-        self.set_up_active_status_charm(patch_multus_is_ready)
-        self.harness.set_leader(is_leader=True)
+    assert gnbsim_called
+    assert timeout == 300
 
-        test_tac = "012"
-        test_tac_int = 18
-        expected_gnb_name = f"{self.namespace}-gnbsim-{self.harness.charm.app.name}"
-        self.harness.update_config(key_values={"tac": test_tac})
+def test_given_simulation_succeeds_when_start_simulation_action_then_simulation_result_is_true(
+    harness, mocker
+):
+    harness.add_storage("config", attach=True)
+    root = harness.get_filesystem_root("gnbsim")
+    (root / "etc/gnbsim/gnb.conf").write_text(read_file("tests/unit/expected_config.yaml"))
+    event = mocker.Mock()
 
-        relation_id = self.harness.add_relation("fiveg_gnb_identity", "gnb_identity_requirer_app")
-        self.harness.add_relation_unit(relation_id, "gnb_identity_requirer_app/0")
-
-        patched_publish_gnb_identity.assert_called_once_with(
-            relation_id=relation_id, gnb_name=expected_gnb_name, tac=test_tac_int
+    def gnbsim_handler(_: testing.ExecArgs) -> testing.ExecResult:
+        return testing.ExecResult(
+            stdout="whatever stdout",
+            stderr="Profile Status: PASS",
         )
 
-    @patch(f"{MULTUS_LIB_PATH}.KubernetesMultusCharmLib.is_ready")
-    @patch(f"{GNB_IDENTITY_LIB_PATH}.GnbIdentityProvides.publish_gnb_identity_information")
-    def test_given_no_tac_in_config_when_fiveg_gnb_identity_relation_is_added_then_default_tac_is_published(  # noqa: E501
-        self, patched_publish_gnb_identity, patch_multus_is_ready
-    ):
-        self.set_up_active_status_charm(patch_multus_is_ready)
-        self.harness.set_leader(is_leader=True)
+    harness.handle_exec("gnbsim", ["/bin/gnbsim"], handler=gnbsim_handler)
+    harness.set_can_connect(container="gnbsim", val=True)
 
-        relation_id = self.harness.add_relation("fiveg_gnb_identity", "gnb_identity_requirer_app")
-        self.harness.add_relation_unit(relation_id, "gnb_identity_requirer_app/0")
-        expected_gnb_name = f"{self.namespace}-gnbsim-{self.harness.charm.app.name}"
-        default_tac_int = 1
+    harness.charm._on_start_simulation_action(event=event)
 
-        patched_publish_gnb_identity.assert_called_once_with(
-            relation_id=relation_id, gnb_name=expected_gnb_name, tac=default_tac_int
-        )
+    event.set_results.assert_called_with(
+        {"success": "true", "info": "run juju debug-log to get more information."}
+    )
 
-    @patch(f"{MULTUS_LIB_PATH}.KubernetesMultusCharmLib.is_ready")
-    @patch(f"{GNB_IDENTITY_LIB_PATH}.GnbIdentityProvides.publish_gnb_identity_information")
-    def test_given_tac_is_not_hexadecimal_when_update_config_then_charm_status_is_blocked(
-        self, _, patch_multus_is_ready
-    ):
-        self.set_up_active_status_charm(patch_multus_is_ready)
-        self.harness.set_leader(is_leader=True)
+def test_given_default_config_when_network_attachment_definitions_from_config_is_called_then_no_interface_specified_in_nad(  # noqa: E501
+    harness
+):
+    harness.disable_hooks()
+    harness.update_config(
+        key_values={
+            "gnb-ip-address": "192.168.251.5",
+        }
+    )
+    nad = harness.charm._network_attachment_definitions_from_config()
+    config = json.loads(nad[0].spec["config"])
 
-        test_tac = "gg"
-        self.harness.update_config(key_values={"tac": test_tac})
-        self.harness.evaluate_status()
-        self.assertEqual(
-            self.harness.charm.unit.status, BlockedStatus("Configurations are invalid: ['tac']")
-        )
+    assert "master" not in config
+    assert "bridge" == config["type"]
+    assert config["bridge"] == "ran-br"
 
-    @patch(f"{MULTUS_LIB_PATH}.KubernetesMultusCharmLib.is_ready")
-    @patch(f"{GNB_IDENTITY_LIB_PATH}.GnbIdentityProvides.publish_gnb_identity_information")
-    def test_given_tac_is_not_hexadecimal_when_fiveg_gnb_identity_relation_is_added_then_gnb_identity_is_not_published(  # noqa: E501
-        self, patched_publish_gnb_identity, patch_multus_is_ready
-    ):
-        self.set_up_active_status_charm(patch_multus_is_ready)
-        self.harness.set_leader(is_leader=True)
+def test_given_default_config_with_interfaces_when_network_attachment_definitions_from_config_is_called_then_interfaces_specified_in_nad(  # noqa: E501
+    harness
+):
+    harness.disable_hooks()
+    harness.update_config(
+        key_values={
+            "gnb-ip-address": "192.168.251.5",
+            "gnb-interface": "gnb",
+        }
+    )
+    nad = harness.charm._network_attachment_definitions_from_config()
+    config = json.loads(nad[0].spec["config"])
+    assert config["master"] == "gnb"
+    assert config["type"] == "macvlan"
 
-        test_tac = "gg"
-        self.harness.update_config(key_values={"tac": test_tac})
-        relation_id = self.harness.add_relation("fiveg_gnb_identity", "gnb_identity_requirer_app")
-        self.harness.add_relation_unit(relation_id, "gnb_identity_requirer_app/0")
+def test_given_fiveg_gnb_identity_relation_created_then_gnb_name_and_tac_are_published(
+    harness, mocker
+):
+    patched_publish_gnb_identity = mocker.patch(
+        f"{GNB_IDENTITY_PROVIDES}.publish_gnb_identity_information"
+    )
+    harness.set_leader(is_leader=True)
+    set_up_active_status_charm(harness)
+    test_tac = "012"
+    test_tac_int = 18
+    expected_gnb_name = f"{NAMESPACE}-gnbsim-{harness.charm.app.name}"
+    harness.update_config(key_values={"tac": test_tac})
 
-        patched_publish_gnb_identity.assert_not_called()
+    relation_id = harness.add_relation("fiveg_gnb_identity", "gnb_identity_requirer_app")
+    harness.add_relation_unit(relation_id, "gnb_identity_requirer_app/0")
 
-    @patch(f"{MULTUS_LIB_PATH}.KubernetesMultusCharmLib.is_ready")
-    @patch(f"{GNB_IDENTITY_LIB_PATH}.GnbIdentityProvides.publish_gnb_identity_information")
-    def tests_given_unit_is_not_leader_when_fiveg_gnb_identity_relation_is_added_then_gnb_identity_is_not_published(  # noqa: E501
-        self, patched_publish_gnb_identity, patch_multus_is_ready
-    ):
-        self.set_up_active_status_charm(patch_multus_is_ready)
-        self.harness.set_leader(is_leader=False)
-        relation_id = self.harness.add_relation("fiveg_gnb_identity", "gnb_identity_requirer_app")
-        self.harness.add_relation_unit(relation_id, "gnb_identity_requirer_app/0")
+    patched_publish_gnb_identity.assert_called_once_with(
+        relation_id=relation_id, gnb_name=expected_gnb_name, tac=test_tac_int
+    )
 
-        patched_publish_gnb_identity.assert_not_called()
+def test_given_no_tac_in_config_when_fiveg_gnb_identity_relation_is_added_then_default_tac_is_published(  # noqa: E501
+    harness, mocker
+):
+    patched_publish_gnb_identity = mocker.patch(
+        f"{GNB_IDENTITY_PROVIDES}.publish_gnb_identity_information"
+    )
+    harness.set_leader(is_leader=True)
+    set_up_active_status_charm(harness)
 
-    @patch(f"{MULTUS_LIB_PATH}.KubernetesMultusCharmLib.is_ready")
-    @patch(f"{GNB_IDENTITY_LIB_PATH}.GnbIdentityProvides.publish_gnb_identity_information")
-    def test_given_fiveg_gnb_identity_relation_exists_when_tac_config_changed_then_new_tac_is_published(  # noqa: E501
-        self, patched_publish_gnb_identity, patch_multus_is_ready
-    ):
-        self.set_up_active_status_charm(patch_multus_is_ready)
-        self.harness.set_leader(is_leader=True)
+    relation_id = harness.add_relation("fiveg_gnb_identity", "gnb_identity_requirer_app")
+    harness.add_relation_unit(relation_id, "gnb_identity_requirer_app/0")
+    expected_gnb_name = f"{NAMESPACE}-gnbsim-{harness.charm.app.name}"
+    default_tac_int = 1
 
-        relation_id = self.harness.add_relation("fiveg_gnb_identity", "gnb_identity_requirer_app")
-        self.harness.add_relation_unit(relation_id, "gnb_identity_requirer_app/0")
-        default_tac_int = 1
-        test_tac = "F"
-        test_tac_int = 15
-        expected_gnb_name = f"{self.namespace}-gnbsim-{self.harness.charm.app.name}"
+    patched_publish_gnb_identity.assert_called_once_with(
+        relation_id=relation_id, gnb_name=expected_gnb_name, tac=default_tac_int
+    )
 
-        expected_calls = [
-            call(relation_id=relation_id, gnb_name=expected_gnb_name, tac=default_tac_int),
-            call(relation_id=relation_id, gnb_name=expected_gnb_name, tac=test_tac_int),
-        ]
-        self.harness.update_config(key_values={"tac": test_tac})
-        patched_publish_gnb_identity.assert_has_calls(expected_calls)
+def test_given_tac_is_not_hexadecimal_when_update_config_then_charm_status_is_blocked(
+    harness,
+):
+    harness.set_leader(is_leader=True)
+    set_up_active_status_charm(harness)
 
-    @patch(f"{MULTUS_LIB_PATH}.KubernetesMultusCharmLib.is_ready")
-    @patch(f"{GNB_IDENTITY_LIB_PATH}.GnbIdentityProvides.publish_gnb_identity_information")
-    def test_given_fiveg_gnb_identity_relation_not_created_when_update_config_does_not_publish_gnb_identity(  # noqa: E501
-        self, patched_publish_gnb_identity, patch_multus_is_ready
-    ):
-        self.set_up_active_status_charm(patch_multus_is_ready)
-        self.harness.set_leader(is_leader=True)
-        self.harness.update_config(key_values={"tac": "12345"})
+    test_tac = "gg"
+    harness.update_config(key_values={"tac": test_tac})
+    harness.evaluate_status()
 
-        patched_publish_gnb_identity.assert_not_called()
+    assert harness.charm.unit.status == BlockedStatus("Configurations are invalid: ['tac']")
 
-    @patch(f"{MULTUS_LIB_PATH}.KubernetesMultusCharmLib.is_ready")
-    @patch(f"{MULTUS_LIB_PATH}.KubernetesMultusCharmLib.multus_is_available")
-    def test_given_multus_disabled_then_status_is_blocked(
-        self, patch_multus_available, patch_multus_is_ready
-    ):
-        patch_multus_is_ready.return_value = True
-        patch_multus_available.return_value = False
-        self.harness.handle_exec("gnbsim", [], result=0)
-        self.harness.add_storage("config", attach=True)
-        self.harness.set_can_connect(container="gnbsim", val=True)
-        self._n2_data_available()
 
-        self.harness.charm.on.update_status.emit()
-        self.harness.evaluate_status()
+def test_given_tac_is_not_hexadecimal_when_fiveg_gnb_identity_relation_is_added_then_gnb_identity_is_not_published(  # noqa: E501
+    harness, mocker
+):
+    patched_publish_gnb_identity = mocker.patch(
+        f"{GNB_IDENTITY_PROVIDES}.publish_gnb_identity_information"
+    )
+    harness.set_leader(is_leader=True)
+    set_up_active_status_charm(harness)
 
-        self.assertEqual(
-            self.harness.charm.unit.status, BlockedStatus("Multus is not installed or enabled")
-        )
+    test_tac = "gg"
+    harness.update_config(key_values={"tac": test_tac})
 
-    @patch(f"{MULTUS_LIB_PATH}.KubernetesMultusCharmLib.is_ready")
-    @patch(f"{MULTUS_LIB_PATH}.KubernetesMultusCharmLib.multus_is_available")
-    def test_given_multus_disabled_then_enabled_then_status_is_active(
-        self, patch_multus_available, patch_multus_is_ready
-    ):
-        patch_multus_is_ready.return_value = True
-        patch_multus_available.side_effect = [False, False, True, True]
-        self.harness.handle_exec("gnbsim", [], result=0)
-        self.harness.add_storage("config", attach=True)
-        self.harness.set_can_connect(container="gnbsim", val=True)
-        self._n2_data_available()
+    relation_id = harness.add_relation("fiveg_gnb_identity", "gnb_identity_requirer_app")
+    harness.add_relation_unit(relation_id, "gnb_identity_requirer_app/0")
 
-        self.harness.charm.on.update_status.emit()
-        self.harness.evaluate_status()
+    patched_publish_gnb_identity.assert_not_called()
 
-        self.assertEqual(self.harness.charm.unit.status, ActiveStatus())
+def tests_given_unit_is_not_leader_when_fiveg_gnb_identity_relation_is_added_then_gnb_identity_is_not_published(  # noqa: E501
+    harness, mocker
+):
+    patched_publish_gnb_identity = mocker.patch(
+        f"{GNB_IDENTITY_PROVIDES}.publish_gnb_identity_information"
+    )
+    harness.set_leader(is_leader=False)
+    set_up_active_status_charm(harness)
+
+    relation_id = harness.add_relation("fiveg_gnb_identity", "gnb_identity_requirer_app")
+    harness.add_relation_unit(relation_id, "gnb_identity_requirer_app/0")
+
+    patched_publish_gnb_identity.assert_not_called()
+
+
+def test_given_fiveg_gnb_identity_relation_exists_when_tac_config_changed_then_new_tac_is_published(  # noqa: E501
+    harness, mocker
+):
+    patched_publish_gnb_identity = mocker.patch(
+        f"{GNB_IDENTITY_PROVIDES}.publish_gnb_identity_information"
+    )
+    harness.set_leader(is_leader=True)
+    set_up_active_status_charm(harness)
+
+    relation_id = harness.add_relation("fiveg_gnb_identity", "gnb_identity_requirer_app")
+    harness.add_relation_unit(relation_id, "gnb_identity_requirer_app/0")
+    default_tac_int = 1
+    test_tac = "F"
+    test_tac_int = 15
+    expected_gnb_name = f"{NAMESPACE}-gnbsim-{harness.charm.app.name}"
+
+    expected_calls = [
+        mocker.call(relation_id=relation_id, gnb_name=expected_gnb_name, tac=default_tac_int),
+        mocker.call(relation_id=relation_id, gnb_name=expected_gnb_name, tac=test_tac_int),
+    ]
+    harness.update_config(key_values={"tac": test_tac})
+    patched_publish_gnb_identity.assert_has_calls(expected_calls)
+
+
+def test_given_fiveg_gnb_identity_relation_not_created_when_update_config_does_not_publish_gnb_identity(  # noqa: E501
+    harness, mocker
+):
+    patched_publish_gnb_identity = mocker.patch(
+        f"{GNB_IDENTITY_PROVIDES}.publish_gnb_identity_information"
+    )
+    harness.set_leader(is_leader=True)
+    set_up_active_status_charm(harness)
+
+    harness.update_config(key_values={"tac": "12345"})
+
+    patched_publish_gnb_identity.assert_not_called()
+
+
+def test_given_multus_disabled_then_status_is_blocked(harness, mocker):
+    mocker.patch(f"{MULTUS_LIB}.multus_is_available", return_value=False)
+    harness.handle_exec("gnbsim", [], result=0)
+    harness.add_storage("config", attach=True)
+    harness.set_can_connect(container="gnbsim", val=True)
+    set_n2_relation_data(harness)
+
+    harness.charm.on.update_status.emit()
+    harness.evaluate_status()
+
+    assert harness.charm.unit.status == BlockedStatus("Multus is not installed or enabled")
+
+def test_given_multus_disabled_then_enabled_then_status_is_active(harness, mocker):
+    patch_multus_available = mocker.patch(f"{MULTUS_LIB}.multus_is_available")
+    patch_multus_available.side_effect = [False, False, True, True]
+    harness.handle_exec("gnbsim", [], result=0)
+    harness.add_storage("config", attach=True)
+    harness.set_can_connect(container="gnbsim", val=True)
+    set_n2_relation_data(harness)
+
+    harness.charm.on.update_status.emit()
+    harness.evaluate_status()
+
+    assert harness.charm.unit.status ==  ActiveStatus()
