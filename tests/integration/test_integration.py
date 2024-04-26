@@ -8,6 +8,7 @@ from pathlib import Path
 
 import pytest
 import yaml
+from pytest_operator.plugin import OpsTest
 
 logger = logging.getLogger(__name__)
 
@@ -28,9 +29,10 @@ TIMEOUT = 15 * 60
 
 @pytest.fixture(scope="module")
 @pytest.mark.abort_on_fail
-async def build_and_deploy(ops_test):
-    """Build the charm-under-test and deploy it."""
-    charm = await ops_test.build_charm(".")
+async def deploy(ops_test: OpsTest, request):
+    """Deploy required components."""
+    assert ops_test.model
+    charm = Path(request.config.getoption("--charm_path")).resolve()
     resources = {
         "gnbsim-image": METADATA["resources"]["gnbsim-image"]["upstream-source"],
     }
@@ -40,13 +42,8 @@ async def build_and_deploy(ops_test):
         application_name=APP_NAME,
         trust=True,
     )
-    await ops_test.model.deploy(
-        AMF_CHARM_NAME,
-        application_name=AMF_CHARM_NAME,
-        channel=AMF_CHARM_CHANNEL,
-        trust=True,
-    )
 
+    await _deploy_amf(ops_test)
     await ops_test.model.deploy(
         DB_CHARM_NAME,
         application_name=DB_CHARM_NAME,
@@ -73,10 +70,8 @@ async def build_and_deploy(ops_test):
 
 
 @pytest.mark.abort_on_fail
-async def test_deploy_charm_and_wait_for_blocked_status(
-    ops_test,
-    build_and_deploy,
-):
+async def test_deploy_charm_and_wait_for_blocked_status(ops_test: OpsTest, deploy):
+    assert ops_test.model
     await ops_test.model.wait_for_idle(
         apps=[APP_NAME],
         status="blocked",
@@ -85,10 +80,8 @@ async def test_deploy_charm_and_wait_for_blocked_status(
 
 
 @pytest.mark.abort_on_fail
-async def test_relate_and_wait_for_active_status(
-    ops_test,
-    build_and_deploy,
-):
+async def test_relate_and_wait_for_active_status(ops_test: OpsTest, deploy):
+    assert ops_test.model
     await ops_test.model.integrate(
         relation1=f"{NRF_CHARM_NAME}:database", relation2=f"{DB_CHARM_NAME}"
     )
@@ -111,23 +104,28 @@ async def test_relate_and_wait_for_active_status(
 
 
 @pytest.mark.abort_on_fail
-async def test_remove_amf_and_wait_for_blocked_status(ops_test, build_and_deploy):
+async def test_remove_amf_and_wait_for_blocked_status(ops_test: OpsTest, deploy):
     assert ops_test.model
     await ops_test.model.remove_application(AMF_CHARM_NAME, block_until_done=True)
     await ops_test.model.wait_for_idle(apps=[APP_NAME], status="blocked", timeout=TIMEOUT)
 
 
 @pytest.mark.abort_on_fail
-async def test_restore_amf_and_wait_for_active_status(ops_test, build_and_deploy):
+async def test_restore_amf_and_wait_for_active_status(ops_test: OpsTest, deploy):
     assert ops_test.model
-    await ops_test.model.deploy(
-        AMF_CHARM_NAME,
-        application_name=AMF_CHARM_NAME,
-        channel="edge",
-        trust=True,
-    )
+    await _deploy_amf(ops_test)
     await ops_test.model.integrate(relation1=AMF_CHARM_NAME, relation2=NRF_CHARM_NAME)
     await ops_test.model.integrate(relation1=AMF_CHARM_NAME, relation2=DB_CHARM_NAME)
     await ops_test.model.integrate(relation1=AMF_CHARM_NAME, relation2=TLS_PROVIDER_CHARM_NAME)
     await ops_test.model.integrate(relation1=APP_NAME, relation2=AMF_CHARM_NAME)
     await ops_test.model.wait_for_idle(apps=[APP_NAME], status="active", timeout=TIMEOUT)
+
+
+async def _deploy_amf(ops_test: OpsTest):
+    assert ops_test.model
+    await ops_test.model.deploy(
+        AMF_CHARM_NAME,
+        application_name=AMF_CHARM_NAME,
+        channel=AMF_CHARM_CHANNEL,
+        trust=True,
+    )
