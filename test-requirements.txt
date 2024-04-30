@@ -79,7 +79,6 @@ mypy-extensions==1.0.0
     #   typing-inspect
 oauthlib==3.2.2
     # via
-    #   -c requirements.txt
     #   kubernetes
     #   requests-oauthlib
 packaging==23.2
