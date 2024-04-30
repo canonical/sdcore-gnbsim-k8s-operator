@@ -82,7 +82,7 @@ packaging==23.2
     #   pytest
 paramiko==3.4.0
     # via juju
-pluggy==1.4.0
+pluggy==1.5.0
     # via pytest
 protobuf==4.25.3
     # via macaroonbakery
@@ -112,7 +112,7 @@ pyrfc3339==1.1
     # via
     #   juju
     #   macaroonbakery
-pytest==8.1.1
+pytest==8.2.0
     # via pytest-interface-tester
 pytest-interface-tester==2.0.1
     # via -r requirements.in
