@@ -2,6 +2,7 @@
 # See LICENSE file for licensing details.
 
 import json
+from typing import Generator
 from unittest.mock import Mock, call, patch
 
 import pytest
@@ -29,33 +30,33 @@ def read_file(path: str) -> str:
     return content
 
 @pytest.fixture
-def patch_multus_is_ready() -> Mock:
+def patch_multus_is_ready() -> Generator[Mock, None, None]:
     with patch(f"{MULTUS_LIB}.is_ready") as patch_multus_is_ready:
         yield patch_multus_is_ready
 
 @pytest.fixture
-def patch_multus_is_available() -> Mock:
+def patch_multus_is_available() -> Generator[Mock, None, None]:
     with patch(f"{MULTUS_LIB}.multus_is_available") as patch_multus_is_available:
         yield patch_multus_is_available
 
 @pytest.fixture
-def patch_publish_gnb_identity() -> Mock:
+def patch_publish_gnb_identity() -> Generator[Mock, None, None]:
     with patch(
         f"{GNB_IDENTITY_LIB}.publish_gnb_identity_information"
     ) as patch_publish_gnb_identity:
         yield patch_publish_gnb_identity
 
 @pytest.fixture
-def patch_k8s_client() -> Mock:
+def patch_k8s_client() -> Generator[Mock, None, None]:
     with patch("charm.KubernetesServicePatch") as patch_k8s_client:
         yield patch_k8s_client
 
 @pytest.fixture
-def patch_generic_sync_client() -> Mock:
+def patch_generic_sync_client() -> Generator[Mock, None, None]:
     with patch("lightkube.core.client.GenericSyncClient") as patch_generic_sync_client:
         yield patch_generic_sync_client
 
-@pytest.fixture
+@pytest.fixture()
 def harness(patch_k8s_client, patch_generic_sync_client, patch_multus_is_ready):
     patch_multus_is_ready.return_value = True
     harness = testing.Harness(GNBSIMOperatorCharm)
@@ -73,7 +74,7 @@ def set_up_active_status_charm(harness):
     assert harness.charm.unit.status == ActiveStatus()
 
 def create_n2_relation(harness) -> int:
-    """Create a relation between gnbsim and amf.
+    """Create a relation between gnbsim and AMF.
 
     Returns:
         int: Id of the created relation
@@ -148,7 +149,6 @@ def test_given_multus_not_ready_when_config_changed_then_status_is_waiting(
     harness.handle_exec("gnbsim", [], result=0)
     harness.add_storage("config", attach=True)
     harness.set_can_connect(container="gnbsim", val=True)
-
     create_n2_relation(harness)
 
     harness.update_config(key_values={})
@@ -199,7 +199,6 @@ def test_given_default_config_and_n2_info_when_config_changed_then_config_is_wri
     harness.update_config(key_values={})
 
     expected_config_file_content = read_file("tests/unit/expected_config.yaml")
-
     assert (root / "etc/gnbsim/gnb.conf").read_text() == expected_config_file_content
 
 def test_given_default_config_and_n2_info_available_when_n2_relation_joined_then_config_is_written_to_workload(  # noqa: E501
@@ -215,10 +214,9 @@ def test_given_default_config_when_config_changed_then_status_is_active(harness)
     set_up_active_status_charm(harness)
 
     harness.update_config(key_values={})
+    harness.charm.on.update_status.emit()
 
     assert harness.charm.unit.status == ActiveStatus()
-
-    harness.charm.on.update_status.emit()
 
 def test_given_default_config_when_update_status_emit_then_status_is_active(harness):
     set_up_active_status_charm(harness)
@@ -245,9 +243,7 @@ def test_given_default_config_when_config_changed_then_upf_route_is_created(harn
 
     harness.handle_exec("gnbsim", ip_route_cmd, handler=ip_route_handler)
     harness.handle_exec("gnbsim", [], result=0)
-
     harness.set_can_connect(container="gnbsim", val=True)
-
     set_n2_relation_data(harness)
 
     harness.update_config(
@@ -417,7 +413,7 @@ def test_given_default_config_when_network_attachment_definitions_from_config_is
     config = json.loads(nad[0].spec["config"])
 
     assert "master" not in config
-    assert "bridge" == config["type"]
+    assert config["type"] == "bridge"
     assert config["bridge"] == "ran-br"
 
 def test_given_default_config_with_interfaces_when_network_attachment_definitions_from_config_is_called_then_interfaces_specified_in_nad(  # noqa: E501
@@ -497,6 +493,7 @@ def tests_given_unit_is_not_leader_when_fiveg_gnb_identity_relation_is_added_the
 ):
     set_up_active_status_charm(harness)
     harness.set_leader(is_leader=False)
+
     relation_id = harness.add_relation("fiveg_gnb_identity", "gnb_identity_requirer_app")
     harness.add_relation_unit(relation_id, "gnb_identity_requirer_app/0")
 
@@ -507,7 +504,6 @@ def test_given_fiveg_gnb_identity_relation_exists_when_tac_config_changed_then_n
 ):
     set_up_active_status_charm(harness)
     harness.set_leader(is_leader=True)
-
     relation_id = harness.add_relation("fiveg_gnb_identity", "gnb_identity_requirer_app")
     harness.add_relation_unit(relation_id, "gnb_identity_requirer_app/0")
     default_tac_int = 1
@@ -515,11 +511,12 @@ def test_given_fiveg_gnb_identity_relation_exists_when_tac_config_changed_then_n
     test_tac_int = 15
     expected_gnb_name = f"{NAMESPACE}-gnbsim-{harness.charm.app.name}"
 
+    harness.update_config(key_values={"tac": test_tac})
+
     expected_calls = [
         call(relation_id=relation_id, gnb_name=expected_gnb_name, tac=default_tac_int),
         call(relation_id=relation_id, gnb_name=expected_gnb_name, tac=test_tac_int),
     ]
-    harness.update_config(key_values={"tac": test_tac})
     patch_publish_gnb_identity.assert_has_calls(expected_calls)
 
 def test_given_fiveg_gnb_identity_relation_not_created_when_update_config_does_not_publish_gnb_identity(  # noqa: E501
