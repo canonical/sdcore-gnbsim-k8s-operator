@@ -132,7 +132,6 @@ pyyaml==6.0.1
     #   pytest-operator
 requests==2.31.0
     # via
-    #   -c requirements.txt
     #   hvac
     #   kubernetes
     #   macaroonbakery
