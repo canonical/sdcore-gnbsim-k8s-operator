@@ -1,3 +1,48 @@
+name: sdcore-gnbsim-k8s
+
+summary: A Charmed Operator for SD-Core's GNBSIM component.
+description: |
+  A Charmed Operator for SD-Core's gNodeB simulator (GNBSIM) component.
+links:
+  website:
+    - https://charmhub.io/sdcore-gnbsim-k8s
+  source:
+    - https://github.com/canonical/sdcore-gnbsim-k8s-operator
+  issues:
+    - https://github.com/canonical/sdcore-gnbsim-k8s-operator/issues
+
+containers:
+  gnbsim:
+    resource: gnbsim-image
+    mounts:
+      - storage: config
+        location: /etc/gnbsim/
+
+resources:
+  gnbsim-image:
+    type: oci-image
+    description: OCI image for 5G gnbsim
+    upstream-source: ghcr.io/canonical/sdcore-gnbsim:1.4.0
+
+storage:
+  config:
+    type: filesystem
+    minimum-size: 1M
+
+provides:
+  fiveg_gnb_identity:
+    interface: fiveg_gnb_identity
+
+requires:
+  fiveg-n2:
+    interface: fiveg_n2
+  logging:
+    interface: loki_push_api
+
+assumes:
+  - k8s-api
+  - juju >= 3.4
+
 type: charm
 bases:
   - build-on:
@@ -15,3 +60,65 @@ parts:
       - libssl-dev
       - pkg-config
       - rustc
+
+config:
+  options:
+    gnb-ip-address:
+      type: string
+      default: "192.168.251.5/24"
+      description: gNodeB IP Address
+    gnb-interface:
+      type: string
+      description: Host interface to use for the RAN Network. If unspecified, a bridge will be used.
+    icmp-packet-destination:
+      type: string
+      default: "192.168.250.1"
+      description: Default ICMP packet destination for simulation
+    imsi:
+      type: string
+      default: "208930100007487"
+      description: International Mobile Subscriber Identity
+    mcc:
+      type: string
+      default: "208"
+      description: Mobile Country Code
+    mnc:
+      type: string
+      default: "93"
+      description: Mobile Network code
+    usim-key:
+      type: string
+      default: "5122250214c33e723a5dd523fc145fc0"
+      description: USIM Key
+    usim-opc:
+      type: string
+      default: "981d464c7c52eb6e5036234984ad0bcf"
+      description: USIM Operator Key
+    usim-sequence-number:
+      type: string
+      default: "16f3b3f70fc2"
+      description: USIM sequence number
+    sd:
+      type: string
+      default: "010203"
+      description: Slice ID
+    sst:
+      type: int
+      default: 1
+      description: Slice Service Type
+    tac:
+      type: string
+      default: "000001"
+      description: Tracking Area Code. Hexadecimal value represented as a string.
+    upf-subnet:
+      type: string
+      default: "192.168.252.0/24"
+      description: Subnet where the UPFs are located (also called Access network)
+    upf-gateway:
+      type: string
+      default: "192.168.251.1"
+      description: Gateway to use to reach the UPF subnet
+
+actions:
+  start-simulation:
+    description: Starts gNB simulation
