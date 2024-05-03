@@ -2,6 +2,9 @@ name: "Dependabot Auto Approve and Merge"
 
 on:
   pull_request:
+    branches:
+      - main
+      - v1.4
 
 permissions:
   pull-requests: write
@@ -9,4 +12,4 @@ permissions:
 
 jobs:
   auto-merge:
-    uses: canonical/sdcore-github-workflows/.github/workflows/dependabot_pr.yaml@v0.0.1
+    uses: canonical/sdcore-github-workflows/.github/workflows/dependabot_pr.yaml@v1.0.0
