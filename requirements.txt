@@ -112,7 +112,7 @@ pyrfc3339==1.1
     # via
     #   juju
     #   macaroonbakery
-pytest==8.2.1
+pytest==8.2.2
     # via pytest-interface-tester
 pytest-interface-tester==2.0.1
     # via -r requirements.in
