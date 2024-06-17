@@ -2,6 +2,7 @@
 # See LICENSE file for licensing details.
 
 import json
+import os
 from unittest.mock import Mock, call, patch
 
 import pytest
@@ -28,8 +29,8 @@ def read_file(path: str) -> str:
         content = f.read()
     return content
 
-class TestCharm:
 
+class TestCharm:
     patcher_lightkube_client = patch("lightkube.core.client.GenericSyncClient")
     patcher_k8s_service_patch = patch("charm.KubernetesServicePatch")
     patcher_multus_ready = patch(f"{MULTUS_LIB}.is_ready")
@@ -72,8 +73,8 @@ class TestCharm:
         Returns:
             int: Id of the created relation
         """
-        amf_relation_id = self.harness.add_relation(relation_name="fiveg-n2", remote_app="amf") # type: ignore[attr-defined]
-        self.harness.add_relation_unit(relation_id=amf_relation_id, remote_unit_name="amf/0") # type: ignore[attr-defined]
+        amf_relation_id = self.harness.add_relation(relation_name="fiveg-n2", remote_app="amf")  # type: ignore[attr-defined]
+        self.harness.add_relation_unit(relation_id=amf_relation_id, remote_unit_name="amf/0")  # type: ignore[attr-defined]
         return amf_relation_id
 
     def set_n2_relation_data(self) -> int:
@@ -83,7 +84,7 @@ class TestCharm:
             int: ID of the created relation
         """
         amf_relation_id = self.create_n2_relation()
-        self.harness.update_relation_data( # type: ignore[attr-defined]
+        self.harness.update_relation_data(  # type: ignore[attr-defined]
             relation_id=amf_relation_id,
             app_or_unit="amf",
             key_values={
@@ -108,8 +109,8 @@ class TestCharm:
             ("sd"),
             ("tac"),
             ("upf-subnet"),
-            ("upf-gateway")
-        ]
+            ("upf-gateway"),
+        ],
     )
     def test_given_invalid_config_when_config_changed_then_status_is_blocked(self, config_param):
         self.harness.update_config(key_values={config_param: ""})
@@ -139,12 +140,10 @@ class TestCharm:
         self.harness.evaluate_status()
 
         assert self.harness.charm.unit.status == WaitingStatus(
-                                                    "Waiting for storage to be attached"
-                                                )
+            "Waiting for storage to be attached"
+        )
 
-    def test_given_multus_not_ready_when_config_changed_then_status_is_waiting(
-        self
-    ):
+    def test_given_multus_not_ready_when_config_changed_then_status_is_waiting(self):
         self.mock_multus_ready.return_value = False
         self.harness.handle_exec("gnbsim", [], result=0)
         self.harness.add_storage("config", attach=True)
@@ -165,11 +164,11 @@ class TestCharm:
         self.harness.evaluate_status()
 
         assert self.harness.charm.unit.status == BlockedStatus(
-                                                    "Waiting for N2 relation to be created"
-                                                )
+            "Waiting for N2 relation to be created"
+        )
 
     def test_given_gnbsim_charm_in_active_state_when_n2_relation_breaks_then_status_is_blocked(
-        self
+        self,
     ):
         self.harness.handle_exec("gnbsim", [], result=0)
         self.harness.add_storage("config", attach=True)
@@ -180,8 +179,8 @@ class TestCharm:
         self.harness.evaluate_status()
 
         assert self.harness.model.unit.status == BlockedStatus(
-                                                    "Waiting for N2 relation to be created"
-                                                )
+            "Waiting for N2 relation to be created"
+        )
 
     def test_given_n2_information_not_available_when_config_changed_then_status_is_waiting(self):
         self.harness.handle_exec("gnbsim", [], result=0)
@@ -195,7 +194,7 @@ class TestCharm:
         assert self.harness.charm.unit.status == WaitingStatus("Waiting for N2 information")
 
     def test_given_default_config_and_n2_info_when_config_changed_then_config_is_written_to_workload(  # noqa: E501
-        self
+        self,
     ):
         self.set_up_active_status_charm()
         root = self.harness.get_filesystem_root("gnbsim")
@@ -206,7 +205,7 @@ class TestCharm:
         assert (root / "etc/gnbsim/gnb.conf").read_text() == expected_config_file_content
 
     def test_given_default_config_and_n2_info_available_when_n2_relation_joined_then_config_is_written_to_workload(  # noqa: E501
-        self
+        self,
     ):
         self.set_up_active_status_charm()
         root = self.harness.get_filesystem_root("gnbsim")
@@ -278,7 +277,7 @@ class TestCharm:
         event.fail.assert_called_with(message="Config file is not written")
 
     def test_given_simulation_command_fails_with_execerror_when_start_simulation_action_then_event_fails(  # noqa: E501
-        self
+        self,
     ):
         self.harness.add_storage("config", attach=True)
         root = self.harness.get_filesystem_root("gnbsim")
@@ -297,7 +296,7 @@ class TestCharm:
         event.fail.assert_called_with(message=f"Failed to execute simulation: {stderr}")
 
     def test_given_simulation_command_fails_with_changeerror_when_start_simulation_action_then_event_fails(  # noqa: E501
-        self
+        self,
     ):
         self.harness.add_storage("config", attach=True)
         root = self.harness.get_filesystem_root("gnbsim")
@@ -329,7 +328,7 @@ class TestCharm:
         event.fail.assert_called_with(message="No output in simulation")
 
     def test_given_simulation_fails_when_start_simulation_action_then_simulation_result_is_false(
-        self
+        self,
     ):
         self.harness.add_storage("config", attach=True)
         root = self.harness.get_filesystem_root("gnbsim")
@@ -352,7 +351,7 @@ class TestCharm:
         )
 
     def test_given_can_connect_to_workload_when_start_simulation_action_then_simulation_is_started(
-        self
+        self,
     ):
         self.harness.add_storage("config", attach=True)
         root = self.harness.get_filesystem_root("gnbsim")
@@ -382,7 +381,7 @@ class TestCharm:
         assert timeout == 300
 
     def test_given_simulation_succeeds_when_start_simulation_action_then_simulation_result_is_true(
-        self
+        self,
     ):
         self.harness.add_storage("config", attach=True)
         root = self.harness.get_filesystem_root("gnbsim")
@@ -405,7 +404,7 @@ class TestCharm:
         )
 
     def test_given_default_config_when_network_attachment_definitions_from_config_is_called_then_no_interface_specified_in_nad(  # noqa: E501
-        self
+        self,
     ):
         self.harness.disable_hooks()
         self.harness.update_config(
@@ -421,7 +420,7 @@ class TestCharm:
         assert config["bridge"] == "ran-br"
 
     def test_given_default_config_with_interfaces_when_network_attachment_definitions_from_config_is_called_then_interfaces_specified_in_nad(  # noqa: E501
-        self
+        self,
     ):
         self.harness.disable_hooks()
         self.harness.update_config(
@@ -435,9 +434,7 @@ class TestCharm:
         assert config["master"] == "gnb"
         assert config["type"] == "macvlan"
 
-    def test_given_fiveg_gnb_identity_relation_created_then_gnb_name_and_tac_are_published(
-        self
-    ):
+    def test_given_fiveg_gnb_identity_relation_created_then_gnb_name_and_tac_are_published(self):
         self.set_up_active_status_charm()
         self.harness.set_leader(is_leader=True)
 
@@ -454,7 +451,7 @@ class TestCharm:
         )
 
     def test_given_no_tac_in_config_when_fiveg_gnb_identity_relation_is_added_then_default_tac_is_published(  # noqa: E501
-        self
+        self,
     ):
         self.set_up_active_status_charm()
         self.harness.set_leader(is_leader=True)
@@ -468,9 +465,7 @@ class TestCharm:
             relation_id=relation_id, gnb_name=expected_gnb_name, tac=default_tac_int
         )
 
-    def test_given_tac_is_not_hexadecimal_when_update_config_then_charm_status_is_blocked(
-        self
-    ):
+    def test_given_tac_is_not_hexadecimal_when_update_config_then_charm_status_is_blocked(self):
         self.set_up_active_status_charm()
         self.harness.set_leader(is_leader=True)
 
@@ -478,11 +473,11 @@ class TestCharm:
         self.harness.update_config(key_values={"tac": test_tac})
         self.harness.evaluate_status()
         assert self.harness.charm.unit.status == BlockedStatus(
-                                                    "Configurations are invalid: ['tac']"
-                                                )
+            "Configurations are invalid: ['tac']"
+        )
 
     def test_given_tac_is_not_hexadecimal_when_fiveg_gnb_identity_relation_is_added_then_gnb_identity_is_not_published(  # noqa: E501
-        self
+        self,
     ):
         self.set_up_active_status_charm()
         self.harness.set_leader(is_leader=True)
@@ -495,7 +490,7 @@ class TestCharm:
         self.mock_gnb_identity.assert_not_called()
 
     def tests_given_unit_is_not_leader_when_fiveg_gnb_identity_relation_is_added_then_gnb_identity_is_not_published(  # noqa: E501
-        self
+        self,
     ):
         self.set_up_active_status_charm()
         self.harness.set_leader(is_leader=False)
@@ -506,7 +501,7 @@ class TestCharm:
         self.mock_gnb_identity.assert_not_called()
 
     def test_given_fiveg_gnb_identity_relation_exists_when_tac_config_changed_then_new_tac_is_published(  # noqa: E501
-        self
+        self,
     ):
         self.set_up_active_status_charm()
         self.harness.set_leader(is_leader=True)
@@ -526,7 +521,7 @@ class TestCharm:
         self.mock_gnb_identity.assert_has_calls(expected_calls)
 
     def test_given_fiveg_gnb_identity_relation_not_created_when_update_config_does_not_publish_gnb_identity(  # noqa: E501
-        self
+        self,
     ):
         self.set_up_active_status_charm()
         self.harness.set_leader(is_leader=True)
@@ -545,12 +540,10 @@ class TestCharm:
         self.harness.evaluate_status()
 
         assert self.harness.charm.unit.status == BlockedStatus(
-                                                    "Multus is not installed or enabled"
-                                                )
+            "Multus is not installed or enabled"
+        )
 
-    def test_given_multus_disabled_then_enabled_then_status_is_active(
-        self
-    ):
+    def test_given_multus_disabled_then_enabled_then_status_is_active(self):
         self.mock_multus_available.side_effect = [False, False, True, True]
         self.harness.handle_exec("gnbsim", [], result=0)
         self.harness.add_storage("config", attach=True)
@@ -561,3 +554,23 @@ class TestCharm:
         self.harness.evaluate_status()
 
         assert self.harness.charm.unit.status == ActiveStatus()
+
+    def test_given_no_workload_version_file_when_pebble_ready_then_workload_version_not_set(
+        self,
+    ):
+        self.harness.evaluate_status()
+        self.set_up_active_status_charm()
+        version = self.harness.get_workload_version()
+        assert version == ""
+
+    def test_given_workload_version_file_when_pebble_ready_then_workload_version_set(
+        self,
+    ):
+        expected_version = "1.2.3"
+        root = self.harness.get_filesystem_root("gnbsim")
+        os.mkdir(f"{root}/etc")
+        (root / "etc/workload-version").write_text(expected_version)
+        self.harness.evaluate_status()
+        self.set_up_active_status_charm()
+        version = self.harness.get_workload_version()
+        assert version == expected_version

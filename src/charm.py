@@ -39,6 +39,7 @@ GNB_NETWORK_ATTACHMENT_DEFINITION_NAME = "gnb-net"
 N2_RELATION_NAME = "fiveg-n2"
 GNB_IDENTITY_RELATION_NAME = "fiveg_gnb_identity"
 LOGGING_RELATION_NAME = "logging"
+WORKLOAD_VERSION_FILE_NAME = "/etc/workload-version"
 
 
 class NadConfigChangedEvent(EventBase):
@@ -110,6 +111,7 @@ class GNBSIMOperatorCharm(CharmBase):
             event.add_status(WaitingStatus("Waiting for container to be ready"))
             logger.info("Waiting for container to be ready")
             return
+        self.unit.set_workload_version(self._get_workload_version())
         if not self._container.exists(path=BASE_CONFIG_PATH):
             event.add_status(WaitingStatus("Waiting for storage to be attached"))
             logger.info("Waiting for storage to be attached")
@@ -295,6 +297,24 @@ class GNBSIMOperatorCharm(CharmBase):
 
     def _get_usim_sequence_number_from_config(self) -> Optional[str]:
         return cast(Optional[str], self.model.config.get("usim-sequence-number"))
+
+    def _get_workload_version(self) -> str:
+        """Return the workload version.
+
+        Checks for the presence of /etc/workload-version file
+        and if present, returns the contents of that file. If
+        the file is not present, an empty string is returned.
+
+        Returns:
+            string: A human readable string representing the
+            version of the workload
+        """
+        if self._container.exists(path=f"{WORKLOAD_VERSION_FILE_NAME}"):
+            version_file_content = self._container.pull(
+                path=f"{WORKLOAD_VERSION_FILE_NAME}"
+            ).read()
+            return version_file_content
+        return ""
 
     def _write_config_file(self, content: str) -> None:
         self._container.push(source=content, path=f"{BASE_CONFIG_PATH}/{CONFIG_FILE_NAME}")
