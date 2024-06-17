@@ -193,7 +193,7 @@ class TestCharm:
 
         assert self.harness.charm.unit.status == WaitingStatus("Waiting for N2 information")
 
-    def test_given_default_config_and_n2_info_when_config_changed_then_config_is_written_to_workload(  # noqa: E501
+    def test_given_default_config_and_n2_info_when_config_changed_then_config_is_written_to_workload(
         self,
     ):
         self.set_up_active_status_charm()
