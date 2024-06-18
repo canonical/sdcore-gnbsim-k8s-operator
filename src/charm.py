@@ -96,6 +96,7 @@ class GNBSIMOperatorCharm(CharmBase):
     def _on_collect_unit_status(self, event: CollectStatusEvent):
         """Check the unit status and set to Unit when CollectStatusEvent is fired.
 
+        Set the workload version if present in workload
         Args:
             event: CollectStatusEvent
         """
