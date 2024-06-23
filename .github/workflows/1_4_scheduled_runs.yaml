@@ -32,7 +32,7 @@ jobs:
       branch-name: "v1.4"
 
   integration-test:
-    uses: canonical/sdcore-github-workflows/.github/workflows/integration-test.yaml@v0.0
+    uses: canonical/sdcore-github-workflows/.github/workflows/integration-test-with-multus.yaml@v0.0
     with:
       branch-name: "v1.4"
       charm-file-name: "sdcore-gnbsim-k8s_ubuntu-22.04-amd64.charm"
