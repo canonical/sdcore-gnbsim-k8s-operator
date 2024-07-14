@@ -123,7 +123,7 @@ LIBAPI = 0
 
 # Increment this PATCH version before using `charmcraft publish-lib` or reset
 # to 0 if you are raising the major API version
-LIBPATCH = 13
+LIBPATCH = 14
 
 
 logger = logging.getLogger(__name__)
@@ -356,8 +356,8 @@ class KubernetesClient:
             container.securityContext.privileged = True  # type: ignore[union-attr]
         statefulset_delta = StatefulSet(
             spec=StatefulSetSpec(
-                selector=statefulset.spec.selector,  # type: ignore[attr-defined]
-                serviceName=statefulset.spec.serviceName,  # type: ignore[attr-defined]
+                selector=statefulset.spec.selector,  # type: ignore[union-attr]
+                serviceName=statefulset.spec.serviceName,  # type: ignore[union-attr]
                 template=PodTemplateSpec(
                     metadata=ObjectMeta(
                         annotations={
@@ -413,8 +413,8 @@ class KubernetesClient:
         container.securityContext.privileged = False
         statefulset_delta = StatefulSet(
             spec=StatefulSetSpec(
-                selector=statefulset.spec.selector,  # type: ignore[attr-defined]
-                serviceName=statefulset.spec.serviceName,  # type: ignore[attr-defined]
+                selector=statefulset.spec.selector,  # type: ignore[union-attr]
+                serviceName=statefulset.spec.serviceName,  # type: ignore[union-attr]
                 template=PodTemplateSpec(
                     metadata=ObjectMeta(
                         annotations={NetworkAnnotation.NETWORK_ANNOTATION_RESOURCE_KEY: "[]"}
@@ -469,7 +469,7 @@ class KubernetesClient:
             cap_net_admin=cap_net_admin,
             privileged=privileged,
             network_annotations=network_annotations,
-            pod=statefulset.spec.template,  # type: ignore[attr-defined]
+            pod=statefulset.spec.template,  # type: ignore[union-attr]
         )
 
     def _pod_is_patched(
