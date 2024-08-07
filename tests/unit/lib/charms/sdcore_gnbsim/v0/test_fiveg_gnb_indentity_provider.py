@@ -5,10 +5,14 @@ from unittest.mock import PropertyMock, patch
 
 import pytest
 from ops import testing
-from test_charms.test_provider_charm.src.charm import WhateverCharm  # type: ignore[import]
 
-TEST_CHARM_PATH = "test_charms.test_provider_charm.src.charm.WhateverCharm"
+from tests.unit.lib.charms.sdcore_gnbsim.v0.test_charms.test_provider_charm.src.charm import (
+    WhateverCharm,
+)
+
+TEST_CHARM_PATH = "tests.unit.lib.charms.sdcore_gnbsim.v0.test_charms.test_provider_charm.src.charm.WhateverCharm"  # noqa: E501
 RELATION_NAME = "fiveg_gnb_identity"
+
 
 class TestGnbIdentityProvides:
     patcher_gnb_name = patch(f"{TEST_CHARM_PATH}.TEST_GNB_NAME", new_callable=PropertyMock)
@@ -23,7 +27,7 @@ class TestGnbIdentityProvides:
         patch.stopall()
 
     @pytest.fixture(autouse=True)
-    def harness(self, setUp, request):
+    def setup_harness(self, setUp, request):
         self.harness = testing.Harness(WhateverCharm)
         self.harness.begin()
         self.harness.set_leader(is_leader=True)
@@ -32,7 +36,7 @@ class TestGnbIdentityProvides:
         request.addfinalizer(self.tearDown)
 
     def test_given_fiveg_gnb_identity_relation_when_relation_created_then_gnb_name_and_tac_are_published_in_the_relation_data(  # noqa: E501
-        self
+        self,
     ):
         test_gnb_name = "gnb004"
         test_tac = 2
