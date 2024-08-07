@@ -25,7 +25,6 @@ class WhateverCharm(CharmBase):
         )
 
     def _on_fiveg_gnb_identity_request(self, event):
-        print("HELLO: TAC: ", self.TEST_TAC)
         self.gnb_identity_provider.publish_gnb_identity_information(
             relation_id=event.relation_id, gnb_name=self.TEST_GNB_NAME, tac=self.TEST_TAC
         )
