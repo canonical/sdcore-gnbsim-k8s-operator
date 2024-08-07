@@ -12,7 +12,7 @@ logger = logging.getLogger(__name__)
 
 class WhateverCharm(CharmBase):
     TEST_GNB_NAME = ""
-    TEST_TAC = ""
+    TEST_TAC = 1
 
     def __init__(self, *args):
         """Create a new instance of this object for each event."""

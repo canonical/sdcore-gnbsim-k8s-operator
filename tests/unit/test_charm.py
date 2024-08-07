@@ -1,6 +1,7 @@
 # Copyright 2023 Canonical Ltd.
 # See LICENSE file for licensing details.
 
+import datetime
 import json
 import os
 from unittest.mock import Mock, call, patch
@@ -9,7 +10,7 @@ import pytest
 from charm import GNBSIMOperatorCharm
 from ops import testing
 from ops.model import ActiveStatus, BlockedStatus, WaitingStatus
-from ops.pebble import ChangeError
+from ops.pebble import Change, ChangeError, ChangeID
 
 MULTUS_LIB = "charms.kubernetes_charm_libraries.v0.multus.KubernetesMultusCharmLib"
 GNB_IDENTITY_LIB = "charms.sdcore_gnbsim_k8s.v0.fiveg_gnb_identity.GnbIdentityProvides"
@@ -49,7 +50,7 @@ class TestCharm:
         patch.stopall()
 
     @pytest.fixture(autouse=True)
-    def harness(self, setUp, request):
+    def setup_harness(self, setUp, request):
         self.mock_multus_ready.return_value = True
         self.mock_multus_available.return_value = True
         self.harness = testing.Harness(GNBSIMOperatorCharm)
@@ -73,8 +74,8 @@ class TestCharm:
         Returns:
             int: Id of the created relation
         """
-        amf_relation_id = self.harness.add_relation(relation_name="fiveg-n2", remote_app="amf")  # type: ignore[attr-defined]
-        self.harness.add_relation_unit(relation_id=amf_relation_id, remote_unit_name="amf/0")  # type: ignore[attr-defined]
+        amf_relation_id = self.harness.add_relation(relation_name="fiveg-n2", remote_app="amf")
+        self.harness.add_relation_unit(relation_id=amf_relation_id, remote_unit_name="amf/0")
         return amf_relation_id
 
     def set_n2_relation_data(self) -> int:
@@ -84,7 +85,7 @@ class TestCharm:
             int: ID of the created relation
         """
         amf_relation_id = self.create_n2_relation()
-        self.harness.update_relation_data(  # type: ignore[attr-defined]
+        self.harness.update_relation_data(
             relation_id=amf_relation_id,
             app_or_unit="amf",
             key_values={
@@ -305,7 +306,20 @@ class TestCharm:
         event = Mock()
 
         def gnbsim_handler(_: testing.ExecArgs) -> testing.ExecResult:
-            raise ChangeError(err=error, change=None)  # type: ignore[arg-type]
+            raise ChangeError(
+                err=error,
+                change=Change(
+                    id=ChangeID("whatever"),
+                    kind="whatever",
+                    summary="whatever",
+                    status="whatever",
+                    tasks=[],
+                    ready=True,
+                    err=None,
+                    spawn_time=datetime.datetime.now(),
+                    ready_time=None,
+                ),
+            )
 
         self.harness.handle_exec("gnbsim", ["/bin/gnbsim"], handler=gnbsim_handler)
         self.harness.set_can_connect(container="gnbsim", val=True)
@@ -413,6 +427,7 @@ class TestCharm:
             }
         )
         nad = self.harness.charm._network_attachment_definitions_from_config()
+        assert nad[0].spec
         config = json.loads(nad[0].spec["config"])
 
         assert "master" not in config
@@ -430,6 +445,7 @@ class TestCharm:
             }
         )
         nad = self.harness.charm._network_attachment_definitions_from_config()
+        assert nad[0].spec
         config = json.loads(nad[0].spec["config"])
         assert config["master"] == "gnb"
         assert config["type"] == "macvlan"
@@ -459,10 +475,10 @@ class TestCharm:
         relation_id = self.harness.add_relation("fiveg_gnb_identity", "gnb_identity_requirer_app")
         self.harness.add_relation_unit(relation_id, "gnb_identity_requirer_app/0")
         expected_gnb_name = f"{NAMESPACE}-gnbsim-{self.harness.charm.app.name}"
-        default_tac_int = 1
+        default_tac = 1
 
         self.mock_gnb_identity.assert_called_once_with(
-            relation_id=relation_id, gnb_name=expected_gnb_name, tac=default_tac_int
+            relation_id=relation_id, gnb_name=expected_gnb_name, tac=default_tac
         )
 
     def test_given_tac_is_not_hexadecimal_when_update_config_then_charm_status_is_blocked(self):

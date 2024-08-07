@@ -5,13 +5,16 @@ from unittest.mock import call, patch
 
 import pytest
 from ops import BoundEvent, testing
-from test_charms.test_requirer_charm.src.charm import WhateverCharm  # type: ignore[import]
+
+from tests.unit.lib.charms.sdcore_gnbsim.v0.test_charms.test_requirer_charm.src.charm import (
+    WhateverCharm,
+)
 
 TEST_CHARM_PATH = "charms.sdcore_gnbsim_k8s.v0.fiveg_gnb_identity.GnbIdentityRequirerCharmEvents"
 RELATION_NAME = "fiveg_gnb_identity"
 
-class TestGnbIdentityRequires:
 
+class TestGnbIdentityRequires:
     patcher_gnb_identity = patch(f"{TEST_CHARM_PATH}.fiveg_gnb_identity_available")
 
     @pytest.fixture()
@@ -23,7 +26,7 @@ class TestGnbIdentityRequires:
         patch.stopall()
 
     @pytest.fixture(autouse=True)
-    def harness(self, setUp, request):
+    def setup_harness(self, setUp, request):
         self.harness = testing.Harness(WhateverCharm)
         self.harness.begin()
         yield self.harness

@@ -8,17 +8,17 @@ import json
 import logging
 from typing import List, Optional, Tuple, cast
 
-from charms.kubernetes_charm_libraries.v0.multus import (  # type: ignore[import]
+from charms.kubernetes_charm_libraries.v0.multus import (
     KubernetesMultusCharmLib,
     NetworkAnnotation,
     NetworkAttachmentDefinition,
 )
-from charms.loki_k8s.v1.loki_push_api import LogForwarder  # type: ignore[import]
-from charms.observability_libs.v1.kubernetes_service_patch import (  # type: ignore[import]
+from charms.loki_k8s.v1.loki_push_api import LogForwarder
+from charms.observability_libs.v1.kubernetes_service_patch import (
     KubernetesServicePatch,
 )
-from charms.sdcore_amf_k8s.v0.fiveg_n2 import N2Requires  # type: ignore[import]
-from charms.sdcore_gnbsim_k8s.v0.fiveg_gnb_identity import (  # type: ignore[import]
+from charms.sdcore_amf_k8s.v0.fiveg_n2 import N2Requires
+from charms.sdcore_gnbsim_k8s.v0.fiveg_gnb_identity import (
     GnbIdentityProvides,
 )
 from jinja2 import Environment, FileSystemLoader
@@ -58,7 +58,7 @@ class KubernetesMultusCharmEvents(CharmEvents):
 class GNBSIMOperatorCharm(CharmBase):
     """Main class to describe juju event handling for the 5G GNBSIM operator for K8s."""
 
-    on = KubernetesMultusCharmEvents()
+    on = KubernetesMultusCharmEvents()  # type: ignore
 
     def __init__(self, *args):
         super().__init__(*args)
@@ -130,7 +130,7 @@ class GNBSIMOperatorCharm(CharmBase):
             return
         event.add_status(ActiveStatus())
 
-    def _configure(self, event: EventBase) -> None:
+    def _configure(self, event: EventBase) -> None:  # noqa: C901
         """Juju event handler.
 
         Sets unit status, writes gnbsim configuration file and sets ip route.
@@ -154,20 +154,44 @@ class GNBSIMOperatorCharm(CharmBase):
         if not self._n2_requirer.amf_hostname or not self._n2_requirer.amf_port:
             return
 
+        if not self._n2_requirer.amf_hostname:
+            return
+        if not (gnb_ip_address := self._get_gnb_ip_address_from_config()):
+            return
+        if not (icmp_packet_destination := self._get_icmp_packet_destination_from_config()):
+            return
+        if not (imsi := self._get_imsi_from_config()):
+            return
+        if not (mcc := self._get_mcc_from_config()):
+            return
+        if not (mnc := self._get_mnc_from_config()):
+            return
+        if not (sd := self._get_sd_from_config()):
+            return
+        if not (usim_sequence_number := self._get_usim_sequence_number_from_config()):
+            return
+        if not (sst := self._get_sst_from_config()):
+            return
+        if not (tac := self._get_tac_from_config()):
+            return
+        if not (usim_opc := self._get_usim_opc_from_config()):
+            return
+        if not (usim_key := self._get_usim_key_from_config()):
+            return
         content = self._render_config_file(
-            amf_hostname=self._n2_requirer.amf_hostname,  # type: ignore[arg-type]
-            amf_port=self._n2_requirer.amf_port,  # type: ignore[arg-type]
-            gnb_ip_address=self._get_gnb_ip_address_from_config().split("/")[0],  # type: ignore[arg-type, union-attr]  # noqa: E501
-            icmp_packet_destination=self._get_icmp_packet_destination_from_config(),  # type: ignore[arg-type]  # noqa: E501
-            imsi=self._get_imsi_from_config(),  # type: ignore[arg-type]
-            mcc=self._get_mcc_from_config(),  # type: ignore[arg-type]
-            mnc=self._get_mnc_from_config(),  # type: ignore[arg-type]
-            sd=self._get_sd_from_config(),  # type: ignore[arg-type]
-            usim_sequence_number=self._get_usim_sequence_number_from_config(),  # type: ignore[arg-type]  # noqa: E501
-            sst=self._get_sst_from_config(),  # type: ignore[arg-type]
-            tac=self._get_tac_from_config(),  # type: ignore[arg-type]
-            usim_opc=self._get_usim_opc_from_config(),  # type: ignore[arg-type]
-            usim_key=self._get_usim_key_from_config(),  # type: ignore[arg-type]
+            amf_hostname=self._n2_requirer.amf_hostname,
+            amf_port=self._n2_requirer.amf_port,
+            gnb_ip_address=gnb_ip_address.split("/")[0],
+            icmp_packet_destination=icmp_packet_destination,
+            imsi=imsi,
+            mcc=mcc,
+            mnc=mnc,
+            sd=sd,
+            usim_sequence_number=usim_sequence_number,
+            sst=sst,
+            tac=tac,
+            usim_opc=usim_opc,
+            usim_key=usim_key,
         )
         self._write_config_file(content=content)
         self._update_fiveg_gnb_identity_relation_data()
@@ -279,7 +303,7 @@ class GNBSIMOperatorCharm(CharmBase):
         return cast(Optional[str], self.model.config.get("sd"))
 
     def _get_sst_from_config(self) -> Optional[int]:
-        return int(self.model.config.get("sst"))  # type: ignore[arg-type]
+        return cast(Optional[int], self.model.config.get("sst"))
 
     def _get_tac_from_config(self) -> Optional[str]:
         return cast(Optional[str], self.model.config.get("tac"))
