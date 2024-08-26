@@ -26,7 +26,7 @@ charset-normalizer==3.3.2
     # via requests
 click==8.1.7
     # via typer
-cosl==0.0.22
+cosl==0.0.23
     # via -r requirements.in
 cryptography==42.0.5
     # via paramiko
@@ -53,7 +53,7 @@ juju==3.5.2.0
     # via -r requirements.in
 kubernetes==29.0.0
     # via juju
-lightkube==0.15.3
+lightkube==0.15.4
     # via -r requirements.in
 lightkube-models==1.30.0.8
     # via
