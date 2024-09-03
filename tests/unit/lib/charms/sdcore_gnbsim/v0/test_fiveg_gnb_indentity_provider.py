@@ -1,78 +1,101 @@
-# Copyright 2023 Canonical Ltd.
+# Copyright 2024 Canonical Ltd.
 # See LICENSE file for licensing details.
 
-from unittest.mock import PropertyMock, patch
 
 import pytest
-from ops import testing
+import scenario
+from ops.charm import ActionEvent, CharmBase
 
-from tests.unit.lib.charms.sdcore_gnbsim.v0.test_charms.test_provider_charm.src.charm import (
-    WhateverCharm,
-)
-
-TEST_CHARM_PATH = "tests.unit.lib.charms.sdcore_gnbsim.v0.test_charms.test_provider_charm.src.charm.WhateverCharm"  # noqa: E501
-RELATION_NAME = "fiveg_gnb_identity"
+from lib.charms.sdcore_gnbsim_k8s.v0.fiveg_gnb_identity import GnbIdentityProvides
 
 
-class TestGnbIdentityProvides:
-    patcher_gnb_name = patch(f"{TEST_CHARM_PATH}.TEST_GNB_NAME", new_callable=PropertyMock)
-    patcher_tac = patch(f"{TEST_CHARM_PATH}.TEST_TAC", new_callable=PropertyMock)
+class DummyFivegGNBIdentityProviderCharm(CharmBase):
+    """Dummy charm implementing the provider side of the fiveg_gnb_identity interface."""
 
-    @pytest.fixture()
-    def setUp(self) -> None:
-        self.mock_gnb_name = TestGnbIdentityProvides.patcher_gnb_name.start()
-        self.mock_tac = TestGnbIdentityProvides.patcher_tac.start()
+    def __init__(self, *args):
+        super().__init__(*args)
+        self.gnb_identity_provider = GnbIdentityProvides(self, "fiveg_gnb_identity")
+        self.framework.observe(
+            self.on.publish_gnb_identity_information_action,
+            self._on_publish_gnb_identity_information_action,
+        )
 
-    def tearDown(self) -> None:
-        patch.stopall()
+    def _on_publish_gnb_identity_information_action(self, event: ActionEvent):
+        relation_id = event.params.get("relation-id")
+        gnb_name = event.params.get("gnb-name")
+        tac = event.params.get("tac")
+        assert relation_id
+        assert gnb_name
+        assert tac
+        self.gnb_identity_provider.publish_gnb_identity_information(
+            relation_id=int(relation_id), gnb_name=gnb_name, tac=tac
+        )
 
+
+class TestFiveGGNBIdentityProvider:
     @pytest.fixture(autouse=True)
-    def setup_harness(self, setUp, request):
-        self.harness = testing.Harness(WhateverCharm)
-        self.harness.begin()
-        self.harness.set_leader(is_leader=True)
-        yield self.harness
-        self.harness.cleanup()
-        request.addfinalizer(self.tearDown)
+    def context(self):
+        self.ctx = scenario.Context(
+            charm_type=DummyFivegGNBIdentityProviderCharm,
+            meta={
+                "name": "gnb-identity-provider-charm",
+                "provides": {"fiveg_gnb_identity": {"interface": "fiveg_gnb_identity"}},
+            },
+            actions={
+                "publish-gnb-identity-information": {
+                    "params": {
+                        "relation-id": {"type": "string"},
+                        "gnb-name": {"type": "string"},
+                        "tac": {"type": "string"},
+                    },
+                },
+            },
+        )
 
-    def test_given_fiveg_gnb_identity_relation_when_relation_created_then_gnb_name_and_tac_are_published_in_the_relation_data(  # noqa: E501
+    def test_given_unit_is_leader_and_data_is_valid_when_set_fiveg_gnb_identity_information_then_data_is_in_application_databag(  # noqa: E501
         self,
     ):
-        test_gnb_name = "gnb004"
-        test_tac = 2
-        self.mock_gnb_name.return_value = test_gnb_name
-        self.mock_tac.return_value = test_tac
-        relation_id = self.harness.add_relation(
-            relation_name=RELATION_NAME, remote_app="whatever-app"
+        fiveg_gnb_identity_relation = scenario.Relation(
+            endpoint="fiveg_gnb_identity",
+            interface="fiveg_gnb_identity",
         )
-        self.harness.add_relation_unit(relation_id, "whatever-app/0")
+        state_in = scenario.State(
+            leader=True,
+            relations=[fiveg_gnb_identity_relation],
+        )
 
-        relation_data = self.harness.get_relation_data(
-            relation_id=relation_id, app_or_unit=self.harness.charm.app
+        action = scenario.Action(
+            name="publish-gnb-identity-information",
+            params={
+                "relation-id": str(fiveg_gnb_identity_relation.relation_id),
+                "gnb-name": "my-gnb-name",
+                "tac": "1",
+            },
         )
-        assert test_gnb_name == relation_data["gnb_name"]
-        assert str(test_tac) == relation_data["tac"]
+
+        action_output = self.ctx.run_action(action, state_in)
+
+        assert action_output.state.relations[0].local_app_data["gnb_name"] == "my-gnb-name"
+        assert action_output.state.relations[0].local_app_data["tac"] == "1"
 
     def test_given_invalid_gnb_name_when_relation_created_then_value_error_is_raised(self):
-        test_invalid_gnb_name = None
-        test_tac = 2
-        self.mock_gnb_name.return_value = test_invalid_gnb_name
-        self.mock_tac.return_value = test_tac
+        fiveg_gnb_identity_relation = scenario.Relation(
+            endpoint="fiveg_gnb_identity",
+            interface="fiveg_gnb_identity",
+        )
+        state_in = scenario.State(
+            leader=True,
+            relations=[fiveg_gnb_identity_relation],
+        )
 
-        with pytest.raises(ValueError):
-            relation_id = self.harness.add_relation(
-                relation_name=RELATION_NAME, remote_app="whatever-app"
-            )
-            self.harness.add_relation_unit(relation_id, "whatever-app/0")
+        action = scenario.Action(
+            name="publish-gnb-identity-information",
+            params={
+                "relation-id": str(fiveg_gnb_identity_relation.relation_id),
+                "gnb-name": "",
+                "tac": "1",
+            },
+        )
 
-    def test_given_invalid_tac_when_relation_created_then_value_error_is_raised(self):
-        test_gnb_name = "gnb005"
-        test_invalid_tac = "0xffffff"
-        self.mock_gnb_name.return_value = test_gnb_name
-        self.mock_tac.return_value = test_invalid_tac
-
-        with pytest.raises(ValueError):
-            relation_id = self.harness.add_relation(
-                relation_name=RELATION_NAME, remote_app="whatever-app"
-            )
-            self.harness.add_relation_unit(relation_id, "whatever-app/0")
+        with pytest.raises(Exception):
+            self.ctx.run_action(action, state_in)
