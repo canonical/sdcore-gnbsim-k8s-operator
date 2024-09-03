@@ -120,6 +120,7 @@ class GNBSIMOperatorCharm(CharmBase):
         if not self._kubernetes_multus.multus_is_available():
             event.add_status(BlockedStatus("Multus is not installed or enabled"))
             logger.info("Multus is not installed or enabled")
+            return
         if not self._kubernetes_multus.is_ready():
             event.add_status(WaitingStatus("Waiting for Multus to be ready"))
             logger.info("Waiting for Multus to be ready")
