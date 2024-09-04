@@ -5,6 +5,7 @@ from unittest.mock import PropertyMock, patch
 
 import pytest
 import scenario
+
 from charm import GNBSIMOperatorCharm
 
 
