@@ -5,10 +5,11 @@ import json
 import unittest
 from unittest.mock import Mock, call, patch
 
-from charm import GNBSIMOperatorCharm
 from ops import testing
 from ops.model import ActiveStatus, BlockedStatus, WaitingStatus
 from ops.pebble import ChangeError
+
+from charm import GNBSIMOperatorCharm
 
 MULTUS_LIB_PATH = "charms.kubernetes_charm_libraries.v0.multus"
 GNB_IDENTITY_LIB_PATH = "charms.sdcore_gnbsim_k8s.v0.fiveg_gnb_identity"
