@@ -25,8 +25,8 @@ from jinja2 import Environment, FileSystemLoader
 from lightkube.models.core_v1 import ServicePort
 from lightkube.models.meta_v1 import ObjectMeta
 from ops import ActiveStatus, BlockedStatus, CollectStatusEvent, WaitingStatus
-from ops.charm import ActionEvent, CharmBase, CharmEvents
-from ops.framework import EventBase, EventSource, Handle
+from ops.charm import ActionEvent, CharmBase
+from ops.framework import EventBase
 from ops.main import main
 from ops.pebble import ChangeError, ExecError
 
@@ -41,24 +41,8 @@ GNB_IDENTITY_RELATION_NAME = "fiveg_gnb_identity"
 LOGGING_RELATION_NAME = "logging"
 WORKLOAD_VERSION_FILE_NAME = "/etc/workload-version"
 
-
-class NadConfigChangedEvent(EventBase):
-    """Event triggered when an existing network attachment definition is changed."""
-
-    def __init__(self, handle: Handle):
-        super().__init__(handle)
-
-
-class KubernetesMultusCharmEvents(CharmEvents):
-    """Kubernetes Multus Charm Events."""
-
-    nad_config_changed = EventSource(NadConfigChangedEvent)
-
-
 class GNBSIMOperatorCharm(CharmBase):
     """Main class to describe juju event handling for the 5G GNBSIM operator for K8s."""
-
-    on = KubernetesMultusCharmEvents()  # type: ignore
 
     def __init__(self, *args):
         super().__init__(*args)
@@ -72,12 +56,13 @@ class GNBSIMOperatorCharm(CharmBase):
             ],
         )
         self._kubernetes_multus = KubernetesMultusCharmLib(
-            charm=self,
+            namespace=self.model.name,
+            statefulset_name=self.model.app.name,
+            pod_name="-".join(self.model.unit.name.rsplit("/", 1)),
             container_name=self._container_name,
             cap_net_admin=True,
-            network_annotations_func=self._generate_network_annotations,
-            network_attachment_definitions_func=self._network_attachment_definitions_from_config,
-            refresh_event=self.on.nad_config_changed,
+            network_annotations=self._generate_network_annotations(),
+            network_attachment_definitions=self._network_attachment_definitions_from_config(),
         )
         self._gnb_identity_provider = GnbIdentityProvides(self, GNB_IDENTITY_RELATION_NAME)
         self._logging = LogForwarder(charm=self, relation_name=LOGGING_RELATION_NAME)
@@ -92,6 +77,7 @@ class GNBSIMOperatorCharm(CharmBase):
             self._gnb_identity_provider.on.fiveg_gnb_identity_request,
             self._configure,
         )
+        self.framework.observe(self.on.remove, self._on_remove)
 
     def _on_collect_unit_status(self, event: CollectStatusEvent):
         """Check the unit status and set to Unit when CollectStatusEvent is fired.
@@ -141,7 +127,7 @@ class GNBSIMOperatorCharm(CharmBase):
         """
         if self._get_invalid_configs():
             return
-        self.on.nad_config_changed.emit()
+        self._kubernetes_multus.configure()
         if not self._relation_created(N2_RELATION_NAME):
             return
         if not self._container.can_connect():
@@ -224,6 +210,12 @@ class GNBSIMOperatorCharm(CharmBase):
             event.fail(message=f"Failed to execute simulation: {str(e.stderr)}")
         except ChangeError as e:
             event.fail(message=f"Failed to execute simulation: {e.err}")
+
+    def _on_remove(self, _) -> None:
+        """Handle the remove event."""
+        if not self.unit.is_leader():
+            return
+        self._kubernetes_multus.remove()
 
     def _generate_network_annotations(self) -> List[NetworkAnnotation]:
         """Generate a list of NetworkAnnotations to be used by gnbsim's StatefulSet.
