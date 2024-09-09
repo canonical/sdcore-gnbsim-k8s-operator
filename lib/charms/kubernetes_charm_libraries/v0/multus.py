@@ -3,90 +3,73 @@
 
 """Charm Library used to leverage the Multus Kubernetes CNI in charms.
 
-- On a BoundEvent (e.g. self.on.nad_config_changed which is originated from NadConfigChangedEvent),
- it will:
-  - Configure the requested network attachment definitions
-  - Patch the statefulset with the necessary annotations for the container to have interfaces
-    that use those new network attachments.
-  - If an existing NAD config changed, it triggers pod restart to make the new config effective
-- On charm removal, it will:
-  - Delete the created network attachment definitions
-
 ## Usage
 
 ```python
 
+from typing import List
+
 from charms.kubernetes_charm_libraries.v0.multus import (
     KubernetesMultusCharmLib,
+    NetworkAnnotation,
     NetworkAttachmentDefinition,
-    NetworkAnnotation
 )
-
-class NadConfigChangedEvent(EventBase):
-
-
-class KubernetesMultusCharmEvents(CharmEvents):
-
-    nad_config_changed = EventSource(NadConfigChangedEvent)
+from ops import RemoveEvent
+from ops.charm import CharmBase
+from ops.framework import EventBase
+from ops.main import main
 
 
 class YourCharm(CharmBase):
 
-    on = KubernetesMultusCharmEvents()
-
     def __init__(self, *args):
         super().__init__(*args)
         self._kubernetes_multus = KubernetesMultusCharmLib(
-            charm=self,
-            container_name=self._container_name,
             cap_net_admin=True,
+            namespace=self.model.name,
+            statefulset_name=self.model.app.name,
+            pod_name="-".join(self.model.unit.name.rsplit("/", 1)),
+            container_name=self._bessd_container_name,
+            network_annotations=self._generate_network_annotations(),
+            network_attachment_definitions=self._network_attachment_definitions_from_config(),
             privileged=True,
-            network_annotations=[
-                NetworkAnnotation(
-                    name=NETWORK_ATTACHMENT_DEFINITION_NAME,
-                    interface=INTERFACE_NAME,
-                )
-            ],
-            network_attachment_definitions_func=self._network_attachment_definitions_from_config,
-            refresh_event=self.on.nad_config_changed,
         )
 
-    def _network_attachment_definitions_from_config(self) -> list[NetworkAttachmentDefinition]:
+        self.framework.observe(self.on.update_status, self._on_update_status)
+
+    def _on_update_status(self, event: EventBase):
+        self._kubernetes_multus.configure()
+
+    def _on_remove(self, _: RemoveEvent) -> None:
+        self._kubernetes_multus.remove()
+
+    def _generate_network_annotations(self) -> List[NetworkAnnotation]:
         return [
-            NetworkAttachmentDefinition(
-                metadata=ObjectMeta(name=NETWORK_ATTACHMENT_DEFINITION_NAME),
-                spec={
-                    "config": json.dumps(
-                        {
-                            "cniVersion": "0.3.1",
-                            "type": "macvlan",
-                            "ipam": {
-                                "type": "static",
-                                "routes": [
-                                    {
-                                        "dst": self._get_upf_ip_address_from_config(),
-                                        "gw": self._get_upf_gateway_from_config(),
-                                    }
-                                ],
-                                "addresses": [
-                                    {
-                                        "address": self._get_interface_ip_address_from_config(),
-                                    }
-                                ],
-                            },
-                        }
-                    )
-                },
+            NetworkAnnotation(
+                name=ACCESS_NETWORK_ATTACHMENT_DEFINITION_NAME,
+                interface_name=ACCESS_INTERFACE_NAME,
+                bridge_name=ACCESS_INTERFACE_BRIDGE_NAME,
+            ),
+            NetworkAnnotation(
+                name=CORE_NETWORK_ATTACHMENT_DEFINITION_NAME,
+                interface_name=CORE_INTERFACE_NAME,
+                bridge_name=CORE_INTERFACE_BRIDGE_NAME,
             ),
         ]
 
-    def _on_config_changed(self, event: EventBase):
-        if not self.unit.is_leader():
-            return
-        if self._get_invalid_configs():
-            return
-        # Fire the NadConfigChangedEvent if the configs are valid.
-        self.on.nad_config_changed.emit()
+    def _network_attachment_definitions_from_config(self) -> List[NetworkAttachmentDefinition]:
+        return [
+            NetworkAttachmentDefinition(
+                name=ACCESS_NETWORK_ATTACHMENT_DEFINITION_NAME,
+                cni_type="macvlan",
+                network_name=self.config["access_network_name"],
+            ),
+            NetworkAttachmentDefinition(
+                name=CORE_NETWORK_ATTACHMENT_DEFINITION_NAME,
+                cni_type="macvlan",
+                network_name=self.config["core_network_name"],
+            ),
+        ]
 ```
 """
 
@@ -94,7 +77,7 @@ import json
 import logging
 from dataclasses import asdict, dataclass
 from json.decoder import JSONDecodeError
-from typing import Callable, List, Optional, Union
+from typing import List, Optional, Union
 
 import httpx
 from lightkube.core.client import Client
@@ -115,8 +98,6 @@ from lightkube.models.meta_v1 import ObjectMeta
 from lightkube.resources.apps_v1 import StatefulSet
 from lightkube.resources.core_v1 import Pod
 from lightkube.types import PatchType
-from ops.charm import CharmBase, RemoveEvent
-from ops.framework import BoundEvent, Object
 
 # The unique Charmhub library identifier, never change it
 LIBID = "75283550e3474e7b8b5b7724d345e3c2"
@@ -126,7 +107,7 @@ LIBAPI = 0
 
 # Increment this PATCH version before using `charmcraft publish-lib` or reset
 # to 0 if you are raising the major API version
-LIBPATCH = 15
+LIBPATCH = 16
 
 
 logger = logging.getLogger(__name__)
@@ -430,7 +411,7 @@ class KubernetesClient:
                 ]
             )
         )
-        container.securityContext.privileged = False
+        container.securityContext.privileged = False  # type: ignore[reportOptionalMemberAccess]
         statefulset_delta = StatefulSet(
             spec=StatefulSetSpec(
                 selector=statefulset.spec.selector,  # type: ignore[union-attr]
@@ -602,57 +583,49 @@ class KubernetesClient:
         return True
 
 
-class KubernetesMultusCharmLib(Object):
+class KubernetesMultusCharmLib:
     """Class to be instantiated by charms requiring Multus networking."""
 
     def __init__(
         self,
-        charm: CharmBase,
-        network_attachment_definitions_func: Callable[
-            [], list[NetworkAttachmentDefinition]
-        ],
-        network_annotations_func: Callable[[], list[NetworkAnnotation]],
+        network_attachment_definitions: List[NetworkAttachmentDefinition],
+        network_annotations: List[NetworkAnnotation],
+        namespace: str,
+        statefulset_name: str,
+        pod_name: str,
         container_name: str,
-        refresh_event: BoundEvent,
         cap_net_admin: bool = False,
         privileged: bool = False,
     ):
         """Constructor for the KubernetesMultusCharmLib.
 
         Args:
-            charm: Charm object
-            network_attachment_definitions_func: A callable to a function returning a list of
-              `NetworkAttachmentDefinition` to be created.
-            network_annotations_func: A callable to a function returning a list
-              of `NetworkAnnotation` to be added to the container.
+            network_attachment_definitions: list of `NetworkAttachmentDefinition` to be created.
+            network_annotations: List of `NetworkAnnotation` to be added to the container.
+            namespace: Kubernetes namespace
+            statefulset_name: Statefulset name
+            pod_name: Pod name
             container_name: Container name
             cap_net_admin: Container requires NET_ADMIN capability
             privileged: Container requires privileged security context
-            refresh_event: A BoundEvent which will be observed
-                to configure_multus (e.g. NadConfigChangedEvent).
         """
-        super().__init__(charm, "kubernetes-multus")
-        self.kubernetes = KubernetesClient(namespace=self.model.name)
-        self.network_attachment_definitions_func = network_attachment_definitions_func
-        self.network_annotations_func = network_annotations_func
+        self.namespace = namespace
+        self.statefulset_name = statefulset_name
+        self.pod_name = pod_name
+        self.kubernetes = KubernetesClient(namespace=self.namespace)
+        self.network_attachment_definitions = network_attachment_definitions
+        self.network_annotations = network_annotations
         self.container_name = container_name
         self.cap_net_admin = cap_net_admin
         self.privileged = privileged
-        # Apply custom events
-        self.framework.observe(refresh_event, self._configure_multus)
-        self.framework.observe(charm.on.remove, self._on_remove)
 
-    def _configure_multus(self, event: BoundEvent) -> None:
-        """Creates network attachment definitions and patches statefulset.
-
-        Args:
-            event: EventBase
-        """
+    def configure(self) -> None:
+        """Creates network attachment definitions and patches statefulset."""
         self._configure_network_attachment_definitions()
         if not self._statefulset_is_patched():
             self.kubernetes.patch_statefulset(
-                name=self.model.app.name,
-                network_annotations=self.network_annotations_func(),
+                name=self.statefulset_name,
+                network_annotations=self.network_annotations,
                 container_name=self.container_name,
                 cap_net_admin=self.cap_net_admin,
                 privileged=self.privileged,
@@ -667,7 +640,7 @@ class KubernetesMultusCharmLib(Object):
             return False
         if "app.juju.is/created-by" not in labels:
             return False
-        if labels["app.juju.is/created-by"] != self.model.app.name:
+        if labels["app.juju.is/created-by"] != self.statefulset_name:
             return False
         return True
 
@@ -683,9 +656,7 @@ class KubernetesMultusCharmLib(Object):
         3. Detects the NAD config changes and triggers pod restart
            if any there is any modification in existing NADs
         """
-        network_attachment_definitions_to_create = (
-            self.network_attachment_definitions_func()
-        )
+        network_attachment_definitions_to_create = self.network_attachment_definitions
         nad_config_changed = False
         for (
             existing_network_attachment_definition
@@ -725,7 +696,7 @@ class KubernetesMultusCharmLib(Object):
 
     def _network_attachment_definitions_are_created(self) -> bool:
         """Returns whether all network attachment definitions are created."""
-        for network_attachment_definition in self.network_attachment_definitions_func():
+        for network_attachment_definition in self.network_attachment_definitions:
             if not self.kubernetes.network_attachment_definition_is_created(
                 network_attachment_definition=network_attachment_definition
             ):
@@ -735,8 +706,8 @@ class KubernetesMultusCharmLib(Object):
     def _statefulset_is_patched(self) -> bool:
         """Returns whether statefuset is patched with network annotations and capabilities."""
         return self.kubernetes.statefulset_is_patched(
-            name=self.model.app.name,
-            network_annotations=self.network_annotations_func(),
+            name=self.statefulset_name,
+            network_annotations=self.network_annotations,
             container_name=self.container_name,
             cap_net_admin=self.cap_net_admin,
             privileged=self.privileged,
@@ -745,8 +716,8 @@ class KubernetesMultusCharmLib(Object):
     def _pod_is_ready(self) -> bool:
         """Returns whether pod is ready with network annotations and capabilities."""
         return self.kubernetes.pod_is_ready(
-            pod_name=self._pod,
-            network_annotations=self.network_annotations_func(),
+            pod_name=self.pod_name,
+            network_annotations=self.network_annotations,
             container_name=self.container_name,
             cap_net_admin=self.cap_net_admin,
             privileged=self.privileged,
@@ -767,26 +738,13 @@ class KubernetesMultusCharmLib(Object):
         pod_is_ready = self._pod_is_ready()
         return nad_are_created and satefulset_is_patched and pod_is_ready
 
-    @property
-    def _pod(self) -> str:
-        """Name of the unit's pod.
-
-        Returns:
-            str: A string containing the name of the current unit's pod.
-        """
-        return "-".join(self.model.unit.name.rsplit("/", 1))
-
-    def _on_remove(self, event: RemoveEvent) -> None:
-        """Deletes network attachment definitions and removes patch.
-
-        Args:
-            event: RemoveEvent
-        """
+    def remove(self) -> None:
+        """Deletes network attachment definitions and removes patch."""
         self.kubernetes.unpatch_statefulset(
-            name=self.model.app.name,
+            name=self.statefulset_name,
             container_name=self.container_name,
         )
-        for network_attachment_definition in self.network_attachment_definitions_func():
+        for network_attachment_definition in self.network_attachment_definitions:
             if self.kubernetes.network_attachment_definition_is_created(
                 network_attachment_definition=network_attachment_definition
             ):
@@ -796,7 +754,7 @@ class KubernetesMultusCharmLib(Object):
 
     def delete_pod(self) -> None:
         """Delete the pod."""
-        self.kubernetes.delete_pod(self._pod)
+        self.kubernetes.delete_pod(self.pod_name)
 
     def multus_is_available(self) -> bool:
         """Check whether Multus is enabled leveraging existence of NAD custom resource.
