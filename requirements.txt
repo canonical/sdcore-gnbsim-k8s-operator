@@ -26,7 +26,7 @@ charset-normalizer==3.3.2
     # via requests
 click==8.1.7
     # via typer
-cosl==0.0.31
+cosl==0.0.34
     # via -r requirements.in
 cryptography==43.0.1
     # via paramiko
@@ -57,7 +57,7 @@ lightkube==0.15.4
     # via
     #   -r requirements.in
     #   cosl
-lightkube-models==1.30.0.8
+lightkube-models==1.31.1.8
     # via
     #   -r requirements.in
     #   lightkube
@@ -115,7 +115,7 @@ pyrfc3339==1.1
     # via
     #   juju
     #   macaroonbakery
-pytest==8.3.2
+pytest==8.3.3
     # via pytest-interface-tester
 pytest-interface-tester==3.1.0
     # via -r requirements.in
