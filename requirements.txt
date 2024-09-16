@@ -57,7 +57,7 @@ lightkube==0.15.4
     # via
     #   -r requirements.in
     #   cosl
-lightkube-models==1.30.0.8
+lightkube-models==1.31.1.8
     # via
     #   -r requirements.in
     #   lightkube
