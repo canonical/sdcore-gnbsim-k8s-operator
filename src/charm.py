@@ -127,6 +127,10 @@ class GNBSIMOperatorCharm(CharmBase):
         """
         if self._get_invalid_configs():
             return
+        if not self._kubernetes_multus.multus_is_available():
+            return
+        if not self._kubernetes_multus.is_ready():
+            return
         self._kubernetes_multus.configure()
         if not self._relation_created(N2_RELATION_NAME):
             return
@@ -134,13 +138,8 @@ class GNBSIMOperatorCharm(CharmBase):
             return
         if not self._container.exists(path=BASE_CONFIG_PATH):
             return
-        if not self._kubernetes_multus.multus_is_available():
-            return
-        if not self._kubernetes_multus.is_ready():
-            return
         if not self._n2_requirer.amf_hostname or not self._n2_requirer.amf_port:
             return
-
         if not self._n2_requirer.amf_hostname:
             return
         if not (gnb_ip_address := self._get_gnb_ip_address_from_config()):
