@@ -76,7 +76,7 @@ ops==2.16.1
     #   -r requirements.in
     #   cosl
     #   ops-scenario
-ops-scenario==6.1.6
+ops-scenario==7.0.5
     # via pytest-interface-tester
 packaging==24.1
     # via
@@ -117,7 +117,7 @@ pyrfc3339==1.1
     #   macaroonbakery
 pytest==8.3.3
     # via pytest-interface-tester
-pytest-interface-tester==3.1.0
+pytest-interface-tester==3.1.1
     # via -r requirements.in
 python-dateutil==2.9.0.post0
     # via kubernetes
