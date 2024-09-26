@@ -10,8 +10,8 @@ configuration:
           bitLength: 24
           gNBValue: "000102"
         plmnId:
-          mcc: 208
-          mnc: 93
+          mcc: 001
+          mnc: 01
       n2Port: 9487
       n3IpAddr: 192.168.251.5
       n3Port: 2152
@@ -19,10 +19,10 @@ configuration:
       supportedTaList:
       - broadcastPlmnList:
         - plmnId:
-            mcc: 208
-            mnc: 93
+            mcc: 001
+            mnc: 01
           taiSliceSupportList:
-          - sd: "010203"
+          - sd: "102030"
             sst: 1
         tac: "000001"
   goProfile:
@@ -40,12 +40,12 @@ configuration:
     opc: 981d464c7c52eb6e5036234984ad0bcf
     perUserTimeout: 100
     plmnId:
-      mcc: 208
-      mnc: 93
+      mcc: 001
+      mnc: 01
     profileName: profile1
     profileType: pdusessest
     sequenceNumber: 16f3b3f70fc2
-    startImsi: 208930100007487
+    startImsi: 001010100007487
     ueCount: 1
   runConfigProfilesAtStart: true
 info:
