@@ -37,7 +37,7 @@ class TestCharmCollectUnitStatus(GNBSUMUnitTestFixtures):
             config={config_param: ""},
         )
 
-        state_out = self.ctx.run("collect_unit_status", state_in)
+        state_out = self.ctx.run(self.ctx.on.collect_unit_status(), state_in)
 
         assert state_out.unit_status == BlockedStatus(
             f"Configurations are invalid: ['{config_param}']"
@@ -48,7 +48,7 @@ class TestCharmCollectUnitStatus(GNBSUMUnitTestFixtures):
             leader=True,
         )
 
-        state_out = self.ctx.run("collect_unit_status", state_in)
+        state_out = self.ctx.run(self.ctx.on.collect_unit_status(), state_in)
 
         assert state_out.unit_status == BlockedStatus("Waiting for N2 relation to be created")
 
@@ -57,7 +57,7 @@ class TestCharmCollectUnitStatus(GNBSUMUnitTestFixtures):
         container = scenario.Container(name="gnbsim", can_connect=False)
         state_in = scenario.State(leader=True, relations=[n2_relation], containers=[container])
 
-        state_out = self.ctx.run("collect_unit_status", state_in)
+        state_out = self.ctx.run(self.ctx.on.collect_unit_status(), state_in)
 
         assert state_out.unit_status == WaitingStatus("Waiting for container to be ready")
 
@@ -66,7 +66,7 @@ class TestCharmCollectUnitStatus(GNBSUMUnitTestFixtures):
         container = scenario.Container(name="gnbsim", can_connect=True)
         state_in = scenario.State(leader=True, relations=[n2_relation], containers=[container])
 
-        state_out = self.ctx.run("collect_unit_status", state_in)
+        state_out = self.ctx.run(self.ctx.on.collect_unit_status(), state_in)
 
         assert state_out.unit_status == WaitingStatus("Waiting for storage to be attached")
 
@@ -79,13 +79,13 @@ class TestCharmCollectUnitStatus(GNBSUMUnitTestFixtures):
             mounts={
                 "config": scenario.Mount(
                     location="/etc/gnbsim",
-                    src=tempfile.mkdtemp(),
+                    source=tempfile.mkdtemp(),
                 )
             },
         )
         state_in = scenario.State(leader=True, relations=[n2_relation], containers=[container])
 
-        state_out = self.ctx.run("collect_unit_status", state_in)
+        state_out = self.ctx.run(self.ctx.on.collect_unit_status(), state_in)
 
         assert state_out.unit_status == BlockedStatus("Multus is not installed or enabled")
 
@@ -99,13 +99,13 @@ class TestCharmCollectUnitStatus(GNBSUMUnitTestFixtures):
             mounts={
                 "config": scenario.Mount(
                     location="/etc/gnbsim",
-                    src=tempfile.mkdtemp(),
+                    source=tempfile.mkdtemp(),
                 )
             },
         )
         state_in = scenario.State(leader=True, relations=[n2_relation], containers=[container])
 
-        state_out = self.ctx.run("collect_unit_status", state_in)
+        state_out = self.ctx.run(self.ctx.on.collect_unit_status(), state_in)
 
         assert state_out.unit_status == WaitingStatus("Waiting for Multus to be ready")
 
@@ -123,13 +123,13 @@ class TestCharmCollectUnitStatus(GNBSUMUnitTestFixtures):
             mounts={
                 "config": scenario.Mount(
                     location="/etc/gnbsim",
-                    src=tempfile.mkdtemp(),
+                    source=tempfile.mkdtemp(),
                 )
             },
         )
         state_in = scenario.State(leader=True, relations=[n2_relation], containers=[container])
 
-        state_out = self.ctx.run("collect_unit_status", state_in)
+        state_out = self.ctx.run(self.ctx.on.collect_unit_status(), state_in)
 
         assert state_out.unit_status == WaitingStatus("Waiting for N2 information")
 
@@ -145,12 +145,12 @@ class TestCharmCollectUnitStatus(GNBSUMUnitTestFixtures):
             mounts={
                 "config": scenario.Mount(
                     location="/etc/gnbsim",
-                    src=tempfile.mkdtemp(),
+                    source=tempfile.mkdtemp(),
                 )
             },
         )
         state_in = scenario.State(leader=True, relations=[n2_relation], containers=[container])
 
-        state_out = self.ctx.run("collect_unit_status", state_in)
+        state_out = self.ctx.run(self.ctx.on.collect_unit_status(), state_in)
 
         assert state_out.unit_status == ActiveStatus()
