@@ -71,7 +71,7 @@ oauthlib==3.2.2
     # via
     #   kubernetes
     #   requests-oauthlib
-ops==2.16.1
+ops==2.17.0
     # via
     #   -r requirements.in
     #   cosl
