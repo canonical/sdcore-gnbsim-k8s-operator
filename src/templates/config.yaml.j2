@@ -31,6 +31,24 @@ configuration:
   httpServer:
     enable: false
   profiles:
+  - profileType: register
+    profileName: profile1
+    enable: true
+    gnbName: gnb1
+    startImsi: {{ imsi }}
+    ueCount: 1
+    defaultAs: {{ icmp_packet_destination }}
+    opc: {{ usim_opc }}
+    key: {{ usim_key }}
+    sequenceNumber: {{ usim_sequence_number }}
+    dnn: {{ dnn }}
+    sNssai:
+      sst: {{ sst }}
+      sd: "{{ sd }}"
+    execInParallel: false
+    plmnId:
+      mcc: {{ mcc }}
+      mnc: {{ mnc }}
   - dataPktCount: 5
     defaultAs: {{ icmp_packet_destination }}
     enable: true
@@ -42,7 +60,7 @@ configuration:
     plmnId:
       mcc: {{ mcc }}
       mnc: {{ mnc }}
-    profileName: profile1
+    profileName: profile2
     profileType: pdusessest
     sequenceNumber: {{ usim_sequence_number }}
     startImsi: {{ imsi }}
