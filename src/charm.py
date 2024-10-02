@@ -206,7 +206,7 @@ class GNBSIMOperatorCharm(CharmBase):
             logger.info("gnbsim simulation output:\n=====\n%s\n=====", stderr)
 
             count = stderr.count("Profile Status: PASS")
-            info = f"Profile Simulation results: {count}/{NUM_PROFILES} profiles passed"
+            info = f"{count}/{NUM_PROFILES} profiles passed"
             if count == NUM_PROFILES:
                 event.set_results(
                     {
