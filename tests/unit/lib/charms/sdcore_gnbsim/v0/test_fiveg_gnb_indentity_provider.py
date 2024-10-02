@@ -64,19 +64,19 @@ class TestFiveGGNBIdentityProvider:
             relations=[fiveg_gnb_identity_relation],
         )
 
-        action = scenario.Action(
-            name="publish-gnb-identity-information",
-            params={
-                "relation-id": str(fiveg_gnb_identity_relation.relation_id),
-                "gnb-name": "my-gnb-name",
-                "tac": "1",
-            },
+        params = {
+            "relation-id": str(fiveg_gnb_identity_relation.id),
+            "gnb-name": "my-gnb-name",
+            "tac": "1",
+        }
+
+        state_out = self.ctx.run(
+            self.ctx.on.action("publish-gnb-identity-information", params=params), state_in
         )
 
-        action_output = self.ctx.run_action(action, state_in)
-
-        assert action_output.state.relations[0].local_app_data["gnb_name"] == "my-gnb-name"
-        assert action_output.state.relations[0].local_app_data["tac"] == "1"
+        relation = state_out.get_relation(fiveg_gnb_identity_relation.id)
+        assert relation.local_app_data["gnb_name"] == "my-gnb-name"
+        assert relation.local_app_data["tac"] == "1"
 
     def test_given_invalid_gnb_name_when_relation_created_then_value_error_is_raised(self):
         fiveg_gnb_identity_relation = scenario.Relation(
@@ -88,14 +88,13 @@ class TestFiveGGNBIdentityProvider:
             relations=[fiveg_gnb_identity_relation],
         )
 
-        action = scenario.Action(
-            name="publish-gnb-identity-information",
-            params={
-                "relation-id": str(fiveg_gnb_identity_relation.relation_id),
-                "gnb-name": "",
-                "tac": "1",
-            },
-        )
+        params = {
+            "relation-id": str(fiveg_gnb_identity_relation.id),
+            "gnb-name": "",
+            "tac": "1",
+        }
 
         with pytest.raises(Exception):
-            self.ctx.run_action(action, state_in)
+            self.ctx.run(
+                self.ctx.on.action("publish-gnb-identity-information", params=params), state_in
+            )

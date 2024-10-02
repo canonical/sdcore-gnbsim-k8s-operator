@@ -25,18 +25,20 @@ class TestCharmConfigure(GNBSUMUnitTestFixtures):
                 mounts={
                     "config": scenario.Mount(
                         location="/etc/gnbsim",
-                        src=temp_dir,
+                        source=temp_dir,
                     )
                 },
-                exec_mock={
-                    (
-                        "ip",
-                        "route",
-                        "replace",
-                        "192.168.252.0/24",
-                        "via",
-                        "192.168.251.1",
-                    ): scenario.ExecOutput()
+                execs={
+                    scenario.Exec(
+                        command_prefix=[
+                            "ip",
+                            "route",
+                            "replace",
+                            "192.168.252.0/24",
+                            "via",
+                            "192.168.251.1",
+                        ]
+                    )
                 },
             )
             state_in = scenario.State(
@@ -45,7 +47,7 @@ class TestCharmConfigure(GNBSUMUnitTestFixtures):
                 containers=[container],
             )
 
-            self.ctx.run("update_status", state_in)
+            self.ctx.run(self.ctx.on.update_status(), state_in)
 
             with open(f"{temp_dir}/gnb.conf", "r") as f:
                 actual_config_file = f.read()
@@ -71,18 +73,20 @@ class TestCharmConfigure(GNBSUMUnitTestFixtures):
                 mounts={
                     "config": scenario.Mount(
                         location="/etc/gnbsim",
-                        src=temp_dir,
+                        source=temp_dir,
                     )
                 },
-                exec_mock={
-                    (
-                        "ip",
-                        "route",
-                        "replace",
-                        "192.168.252.0/24",
-                        "via",
-                        "192.168.251.1",
-                    ): scenario.ExecOutput()
+                execs={
+                    scenario.Exec(
+                        command_prefix=[
+                            "ip",
+                            "route",
+                            "replace",
+                            "192.168.252.0/24",
+                            "via",
+                            "192.168.251.1",
+                        ]
+                    )
                 },
             )
             state_in = scenario.State(
@@ -93,10 +97,10 @@ class TestCharmConfigure(GNBSUMUnitTestFixtures):
                 config={"tac": "2"},
             )
 
-            self.ctx.run("update_status", state_in)
+            self.ctx.run(self.ctx.on.update_status(), state_in)
 
             self.mock_gnb_identity_publish_information.assert_called_once_with(
-                relation_id=gnb_identity_relation.relation_id,
+                relation_id=gnb_identity_relation.id,
                 gnb_name="my-model-gnbsim-sdcore-gnbsim-k8s",
                 tac=2,
             )

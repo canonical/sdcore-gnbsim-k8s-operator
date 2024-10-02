@@ -6,7 +6,7 @@
 #
 annotated-types==0.7.0
     # via pydantic
-anyio==4.4.0
+anyio==4.6.0
     # via httpx
 bcrypt==4.2.0
     # via paramiko
@@ -18,7 +18,7 @@ certifi==2024.8.30
     #   httpx
     #   kubernetes
     #   requests
-cffi==1.17.0
+cffi==1.17.1
     # via
     #   cryptography
     #   pynacl
@@ -26,11 +26,13 @@ charset-normalizer==3.3.2
     # via requests
 click==8.1.7
     # via typer
-cosl==0.0.34
+cosl==0.0.36
     # via -r requirements.in
 cryptography==43.0.1
     # via paramiko
-google-auth==2.34.0
+durationpy==0.7
+    # via kubernetes
+google-auth==2.35.0
     # via kubernetes
 h11==0.14.0
     # via httpcore
@@ -40,7 +42,7 @@ httpx==0.27.2
     # via lightkube
 hvac==2.3.0
     # via juju
-idna==3.8
+idna==3.10
     # via
     #   anyio
     #   httpx
@@ -51,7 +53,7 @@ jinja2==3.1.4
     # via -r requirements.in
 juju==3.5.2.0
     # via -r requirements.in
-kubernetes==30.1.0
+kubernetes==31.0.0
     # via juju
 lightkube==0.15.4
     # via
@@ -71,29 +73,29 @@ oauthlib==3.2.2
     # via
     #   kubernetes
     #   requests-oauthlib
-ops==2.16.0
+ops==2.17.0
     # via
     #   -r requirements.in
     #   cosl
     #   ops-scenario
-ops-scenario==6.1.7
+ops-scenario==7.0.5
     # via pytest-interface-tester
 packaging==24.1
     # via
     #   juju
     #   pytest
-paramiko==3.4.1
+paramiko==3.5.0
     # via juju
 pluggy==1.5.0
     # via pytest
-protobuf==5.28.0
+protobuf==5.28.2
     # via macaroonbakery
-pyasn1==0.6.0
+pyasn1==0.6.1
     # via
     #   juju
     #   pyasn1-modules
     #   rsa
-pyasn1-modules==0.4.0
+pyasn1-modules==0.4.1
     # via google-auth
 pycparser==2.22
     # via cffi
@@ -117,11 +119,11 @@ pyrfc3339==1.1
     #   macaroonbakery
 pytest==8.3.3
     # via pytest-interface-tester
-pytest-interface-tester==3.1.0
+pytest-interface-tester==3.2.0
     # via -r requirements.in
 python-dateutil==2.9.0.post0
     # via kubernetes
-pytz==2024.1
+pytz==2024.2
     # via pyrfc3339
 pyyaml==6.0.2
     # via
@@ -165,7 +167,7 @@ typing-extensions==4.12.2
     #   typing-inspect
 typing-inspect==0.9.0
     # via juju
-urllib3==2.2.2
+urllib3==2.2.3
     # via
     #   kubernetes
     #   requests
@@ -173,5 +175,5 @@ websocket-client==1.8.0
     # via
     #   kubernetes
     #   ops
-websockets==13.0.1
+websockets==13.1
     # via juju

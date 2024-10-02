@@ -47,7 +47,7 @@ class TestFiveGGNBIdentityProvider:
             relations=[fiveg_gnb_identity_relation],
         )
 
-        self.ctx.run(fiveg_gnb_identity_relation.changed_event, state_in)
+        self.ctx.run(self.ctx.on.relation_changed(fiveg_gnb_identity_relation), state_in)
 
         assert len(self.ctx.emitted_events) == 2
         assert isinstance(self.ctx.emitted_events[1], GnbIdentityAvailableEvent)
@@ -69,6 +69,6 @@ class TestFiveGGNBIdentityProvider:
             relations=[fiveg_gnb_identity_relation],
         )
 
-        self.ctx.run(fiveg_gnb_identity_relation.changed_event, state_in)
+        self.ctx.run(self.ctx.on.relation_changed(fiveg_gnb_identity_relation), state_in)
 
         assert len(self.ctx.emitted_events) == 1
