@@ -6,21 +6,15 @@ output "app_name" {
   value       = juju_application.gnbsim.name
 }
 
-# Required integration endpoints
-
-output "fiveg_n2_endpoint" {
-  description = "Name of the endpoint used to provide information on connectivity to the N2 plane."
-  value       = "fiveg-n2"
+output "requires" {
+  value = {
+    fiveg_n2 = "fiveg-n2"
+    logging  = "logging"
+  }
 }
 
-output "logging_endpoint" {
-  description = "Name of the endpoint used to integrate with the Logging provider."
-  value       = "logging"
-}
-
-# Provided integration endpoints
-
-output "fiveg_gnb_identity_endpoint" {
-  description = "Name of the endpoint used to provide information about simulated gNB instance."
-  value       = "fiveg_gnb_identity"
+output "provides" {
+  value = {
+    fiveg_gnb_identity = "fiveg_gnb_identity"
+  }
 }
