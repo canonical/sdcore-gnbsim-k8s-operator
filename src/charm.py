@@ -40,7 +40,7 @@ N2_RELATION_NAME = "fiveg-n2"
 GNB_IDENTITY_RELATION_NAME = "fiveg_gnb_identity"
 LOGGING_RELATION_NAME = "logging"
 WORKLOAD_VERSION_FILE_NAME = "/etc/workload-version"
-NUM_PROFILES = 3
+NUM_PROFILES = 5
 
 
 class GNBSIMOperatorCharm(CharmBase):
