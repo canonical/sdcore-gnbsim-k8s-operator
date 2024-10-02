@@ -3,13 +3,17 @@
 
 resource "juju_application" "gnbsim" {
   name  = var.app_name
-  model = var.model_name
+  model = var.model
 
   charm {
-    name    = "sdcore-gnbsim-k8s"
-    channel = var.channel
+    name     = "sdcore-gnbsim-k8s"
+    channel  = var.channel
+    revision = var.revision
   }
-  config = var.config
-  units  = 1
-  trust  = true
+
+  config      = var.config
+  constraints = var.constraints
+  resources   = var.resources
+  trust       = true
+  units       = var.units
 }
