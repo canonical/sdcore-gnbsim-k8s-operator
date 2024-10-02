@@ -40,6 +40,7 @@ N2_RELATION_NAME = "fiveg-n2"
 GNB_IDENTITY_RELATION_NAME = "fiveg_gnb_identity"
 LOGGING_RELATION_NAME = "logging"
 WORKLOAD_VERSION_FILE_NAME = "/etc/workload-version"
+NUM_PROFILES = 3
 
 
 class GNBSIMOperatorCharm(CharmBase):
@@ -196,19 +197,30 @@ class GNBSIMOperatorCharm(CharmBase):
             event.fail(message="Config file is not written")
             return
         try:
-            stdout, stderr = self._exec_command_in_workload(
+            _, stderr = self._exec_command_in_workload(
                 command=f"/bin/gnbsim --cfg {BASE_CONFIG_PATH}/{CONFIG_FILE_NAME}",
             )
             if not stderr:
                 event.fail(message="No output in simulation")
                 return
             logger.info("gnbsim simulation output:\n=====\n%s\n=====", stderr)
-            event.set_results(
-                {
-                    "success": "true" if "Profile Status: PASS" in stderr else "false",
-                    "info": "run juju debug-log to get more information.",
-                }
-            )
+
+            log_message = "Profile Status: PASS"
+            count = stderr.count(log_message)
+            if count >= NUM_PROFILES:
+                event.set_results(
+                    {
+                        "success": "true",
+                        "info": f"Log message appeared {count} times, meeting or exceeding the required {NUM_PROFILES} occurrences.",  # noqa: E501
+                    }
+                )
+            else:
+                event.set_results(
+                    {
+                        "success": "false",
+                        "info": f"Log message appeared {count} times, but {NUM_PROFILES} occurrences were required.",  # noqa: E501
+                    }
+                )
         except ExecError as e:
             event.fail(message=f"Failed to execute simulation: {str(e.stderr)}")
         except ChangeError as e:

@@ -49,7 +49,9 @@ configuration:
     plmnId:
       mcc: {{ mcc }}
       mnc: {{ mnc }}
-  - dataPktCount: 5
+  - profileType: pdusessest
+    profileName: profile2
+    dataPktCount: 5
     defaultAs: {{ icmp_packet_destination }}
     enable: true
     execInParallel: false
@@ -57,14 +59,34 @@ configuration:
     key: {{ usim_key }}
     opc: {{ usim_opc }}
     perUserTimeout: 100
+    dnn: "internet"
+    sNssai:
+      sst: {{ sst }}
+      sd: "{{ sd }}"
     plmnId:
       mcc: {{ mcc }}
       mnc: {{ mnc }}
-    profileName: profile2
-    profileType: pdusessest
     sequenceNumber: {{ usim_sequence_number }}
     startImsi: {{ imsi }}
     ueCount: 1
+  - profileType: anrelease
+    profileName: profile3
+    enable: true
+    gnbName: gnb1
+    startImsi: {{ imsi }}
+    ueCount: 1
+    defaultAs: {{ icmp_packet_destination }}
+    opc: {{ usim_opc }}
+    key: {{ usim_key }}
+    sequenceNumber: {{ usim_sequence_number }}
+    dnn: {{ dnn }}
+    sNssai:
+      sst: {{ sst }}
+      sd: "{{ sd }}"
+    execInParallel: false
+    plmnId:
+      mcc: {{ mcc }}
+      mnc: {{ mnc }}
   runConfigProfilesAtStart: true
 info:
   description: gNodeB sim initial configuration
