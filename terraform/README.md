@@ -17,7 +17,7 @@ rather serve as a building block for higher level modules.
 - **output.tf** - Responsible for integrating the module with other Terraform modules, primarily
   by defining potential integration endpoints (charm integrations), but also by exposing
   the application name.
-- **terraform.tf** - Defines the Terraform provider.
+- **versions.tf** - Defines the Terraform provider.
 
 ## Using sdcore-gnbsim-k8s base module in higher level modules
 
@@ -25,10 +25,14 @@ If you want to use `sdcore-gnbsim-k8s` base module as part of your Terraform mod
 like shown below:
 
 ```text
+data "juju_model" "my_model" {
+  name = "my_model_name"
+}
+
 module "gnbsim" {
   source = "git::https://github.com/canonical/sdcore-gnbsim-k8s-operator//terraform"
   
-  model_name = "juju_model_name"
+  model = juju_model.my_model.name
   config = Optional config map
 }
 ```
@@ -40,11 +44,11 @@ resource "juju_integration" "gnbsim-amf" {
   model = var.model_name
   application {
     name     = module.gnbsim.app_name
-    endpoint = module.gnbsim.fiveg_n2_endpoint
+    endpoint = module.gnbsim.requires.fiveg_n2
   }
   application {
     name     = module.amf.app_name
-    endpoint = module.amf.fiveg_n2_endpoint
+    endpoint = module.amf.provides.fiveg_n2
   }
 }
 ```
