@@ -41,6 +41,7 @@ GNB_IDENTITY_RELATION_NAME = "fiveg_gnb_identity"
 LOGGING_RELATION_NAME = "logging"
 WORKLOAD_VERSION_FILE_NAME = "/etc/workload-version"
 
+
 class GNBSIMOperatorCharm(CharmBase):
     """Main class to describe juju event handling for the 5G GNBSIM operator for K8s."""
 
@@ -317,7 +318,7 @@ class GNBSIMOperatorCharm(CharmBase):
 
     def _get_usim_sequence_number_from_config(self) -> Optional[str]:
         return cast(Optional[str], self.model.config.get("usim-sequence-number"))
-    
+
     def _get_dnn_from_config(self) -> Optional[str]:
         return cast(Optional[str], self.model.config.get("dnn"))
 
