@@ -205,20 +205,20 @@ class GNBSIMOperatorCharm(CharmBase):
                 return
             logger.info("gnbsim simulation output:\n=====\n%s\n=====", stderr)
 
-            log_message = "Profile Status: PASS"
-            count = stderr.count(log_message)
-            if count >= NUM_PROFILES:
+            count = stderr.count("Profile Status: PASS")
+            info = f"Profile Simulation results: {count}/{NUM_PROFILES} profiles passed"
+            if count == NUM_PROFILES:
                 event.set_results(
                     {
                         "success": "true",
-                        "info": f"Log message appeared {count} times, meeting or exceeding the required {NUM_PROFILES} occurrences.",  # noqa: E501
+                        "info": info
                     }
                 )
             else:
                 event.set_results(
                     {
                         "success": "false",
-                        "info": f"Log message appeared {count} times, but {NUM_PROFILES} occurrences were required.",  # noqa: E501
+                        "info": info
                     }
                 )
         except ExecError as e:

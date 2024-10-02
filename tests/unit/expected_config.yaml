@@ -87,6 +87,43 @@ configuration:
     plmnId:
       mcc: 001
       mnc: 01
+  - profileType: uetriggservicereq
+    profileName: profile4
+    enable: true
+    gnbName: gnb1
+    startImsi: 001010100007487
+    ueCount: 1
+    defaultAs: 192.168.250.1
+    opc: 981d464c7c52eb6e5036234984ad0bcf
+    key: 5122250214c33e723a5dd523fc145fc0
+    sequenceNumber: 16f3b3f70fc2
+    dnn: internet
+    retransMsg: false
+    sNssai:
+      sst: 1
+      sd: "102030"
+    execInParallel: false
+    plmnId:
+      mcc: 001
+      mnc: 01
+  - profileType: deregister
+    profileName: profile5
+    enable: false
+    gnbName: gnb1
+    startImsi: 001010100007487
+    ueCount: 1
+    defaultAs: 192.168.250.1
+    opc: 981d464c7c52eb6e5036234984ad0bcf
+    key: 5122250214c33e723a5dd523fc145fc0
+    sequenceNumber: 16f3b3f70fc2
+    dnn: internet
+    sNssai:
+      sst: 1
+      sd: "102030"
+    execInParallel: false
+    plmnId:
+      mcc: 001
+      mnc: 01
   runConfigProfilesAtStart: true
 info:
   description: gNodeB sim initial configuration

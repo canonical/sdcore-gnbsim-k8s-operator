@@ -87,6 +87,43 @@ configuration:
     plmnId:
       mcc: {{ mcc }}
       mnc: {{ mnc }}
+  - profileType: uetriggservicereq
+    profileName: profile4
+    enable: true
+    gnbName: gnb1
+    startImsi: {{ imsi }}
+    ueCount: 1
+    defaultAs: {{ icmp_packet_destination }}
+    opc: {{ usim_opc }}
+    key: {{ usim_key }}
+    sequenceNumber: {{ usim_sequence_number }}
+    dnn: {{ dnn }}
+    retransMsg: false
+    sNssai:
+      sst: {{ sst }}
+      sd: "{{ sd }}"
+    execInParallel: false
+    plmnId:
+      mcc: {{ mcc }}
+      mnc: {{ mnc }}
+  - profileType: deregister
+    profileName: profile5
+    enable: false
+    gnbName: gnb1
+    startImsi: {{ imsi }}
+    ueCount: 1
+    defaultAs: {{ icmp_packet_destination }}
+    opc: {{ usim_opc }}
+    key: {{ usim_key }}
+    sequenceNumber: {{ usim_sequence_number }}
+    dnn: {{ dnn }}
+    sNssai:
+      sst: {{ sst }}
+      sd: "{{ sd }}"
+    execInParallel: false
+    plmnId:
+      mcc: {{ mcc }}
+      mnc: {{ mnc }}
   runConfigProfilesAtStart: true
 info:
   description: gNodeB sim initial configuration
