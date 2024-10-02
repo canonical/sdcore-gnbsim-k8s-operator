@@ -118,6 +118,10 @@ config:
       type: string
       default: "192.168.251.1"
       description: Gateway to use to reach the UPF subnet
+    dnn:
+      type: string
+      default: "internet"
+      description: Data Network Name
 
 actions:
   start-simulation:

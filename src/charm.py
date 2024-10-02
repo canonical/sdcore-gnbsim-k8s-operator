@@ -40,6 +40,8 @@ N2_RELATION_NAME = "fiveg-n2"
 GNB_IDENTITY_RELATION_NAME = "fiveg_gnb_identity"
 LOGGING_RELATION_NAME = "logging"
 WORKLOAD_VERSION_FILE_NAME = "/etc/workload-version"
+NUM_PROFILES = 5
+
 
 class GNBSIMOperatorCharm(CharmBase):
     """Main class to describe juju event handling for the 5G GNBSIM operator for K8s."""
@@ -164,6 +166,8 @@ class GNBSIMOperatorCharm(CharmBase):
             return
         if not (usim_key := self._get_usim_key_from_config()):
             return
+        if not (dnn := self._get_dnn_from_config()):
+            return
         content = self._render_config_file(
             amf_hostname=self._n2_requirer.amf_hostname,
             amf_port=self._n2_requirer.amf_port,
@@ -178,6 +182,7 @@ class GNBSIMOperatorCharm(CharmBase):
             tac=tac,
             usim_opc=usim_opc,
             usim_key=usim_key,
+            dnn=dnn,
         )
         self._write_config_file(content=content)
         self._update_fiveg_gnb_identity_relation_data()
@@ -192,19 +197,30 @@ class GNBSIMOperatorCharm(CharmBase):
             event.fail(message="Config file is not written")
             return
         try:
-            stdout, stderr = self._exec_command_in_workload(
+            _, stderr = self._exec_command_in_workload(
                 command=f"/bin/gnbsim --cfg {BASE_CONFIG_PATH}/{CONFIG_FILE_NAME}",
             )
             if not stderr:
                 event.fail(message="No output in simulation")
                 return
             logger.info("gnbsim simulation output:\n=====\n%s\n=====", stderr)
-            event.set_results(
-                {
-                    "success": "true" if "Profile Status: PASS" in stderr else "false",
-                    "info": "run juju debug-log to get more information.",
-                }
-            )
+
+            count = stderr.count("Profile Status: PASS")
+            info = f"{count}/{NUM_PROFILES} profiles passed"
+            if count == NUM_PROFILES:
+                event.set_results(
+                    {
+                        "success": "true",
+                        "info": info
+                    }
+                )
+            else:
+                event.set_results(
+                    {
+                        "success": "false",
+                        "info": info
+                    }
+                )
         except ExecError as e:
             event.fail(message=f"Failed to execute simulation: {str(e.stderr)}")
         except ChangeError as e:
@@ -315,6 +331,9 @@ class GNBSIMOperatorCharm(CharmBase):
     def _get_usim_sequence_number_from_config(self) -> Optional[str]:
         return cast(Optional[str], self.model.config.get("usim-sequence-number"))
 
+    def _get_dnn_from_config(self) -> Optional[str]:
+        return cast(Optional[str], self.model.config.get("dnn"))
+
     def _get_workload_version(self) -> str:
         """Return the workload version.
 
@@ -358,6 +377,7 @@ class GNBSIMOperatorCharm(CharmBase):
         usim_key: str,
         usim_opc: str,
         usim_sequence_number: str,
+        dnn: str,
     ) -> str:
         """Render config file based on parameters.
 
@@ -375,6 +395,7 @@ class GNBSIMOperatorCharm(CharmBase):
             usim_key: USIM key
             usim_opc: USIM OPC
             usim_sequence_number: USIM sequence number
+            dnn: Data Network Name
 
         Returns:
             str: Rendered gnbsim configuration file
@@ -395,6 +416,7 @@ class GNBSIMOperatorCharm(CharmBase):
             usim_key=usim_key,
             usim_opc=usim_opc,
             usim_sequence_number=usim_sequence_number,
+            dnn=dnn,
         )
 
     def _get_invalid_configs(self) -> list[str]:  # noqa: C901
