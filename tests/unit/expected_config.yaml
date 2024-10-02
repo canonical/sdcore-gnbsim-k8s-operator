@@ -108,7 +108,7 @@ configuration:
       mnc: 01
   - profileType: deregister
     profileName: profile5
-    enable: false
+    enable: true
     gnbName: gnb1
     startImsi: 001010100007487
     ueCount: 1
