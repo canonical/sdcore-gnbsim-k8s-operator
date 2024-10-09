@@ -41,7 +41,7 @@ Create integrations, for instance:
 
 ```text
 resource "juju_integration" "gnbsim-amf" {
-  model = var.model_name
+  model = juju_model.my_model.name
   application {
     name     = module.gnbsim.app_name
     endpoint = module.gnbsim.requires.fiveg_n2
