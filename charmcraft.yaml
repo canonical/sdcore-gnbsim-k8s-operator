@@ -76,15 +76,15 @@ config:
       description: Default ICMP packet destination for simulation
     imsi:
       type: string
-      default: "208930100007487"
+      default: "001010100007487"
       description: International Mobile Subscriber Identity
     mcc:
       type: string
-      default: "208"
+      default: "001"
       description: Mobile Country Code
     mnc:
       type: string
-      default: "93"
+      default: "01"
       description: Mobile Network code
     usim-key:
       type: string
@@ -100,7 +100,7 @@ config:
       description: USIM sequence number
     sd:
       type: string
-      default: "010203"
+      default: "102030"
       description: Slice ID
     sst:
       type: int
@@ -118,6 +118,10 @@ config:
       type: string
       default: "192.168.251.1"
       description: Gateway to use to reach the UPF subnet
+    dnn:
+      type: string
+      default: "internet"
+      description: Data Network Name
 
 actions:
   start-simulation:

@@ -94,7 +94,7 @@ Typical usage of this class would look something like:
 
 import logging
 
-from interface_tester.schema_base import DataBagSchema  # type: ignore[import]
+from interface_tester.schema_base import DataBagSchema
 from ops.charm import CharmBase, CharmEvents, RelationChangedEvent, RelationJoinedEvent
 from ops.framework import EventBase, EventSource, Handle, Object
 from pydantic import BaseModel, Field, ValidationError
@@ -107,7 +107,7 @@ LIBAPI = 0
 
 # Increment this PATCH version before using `charmcraft publish-lib` or reset
 # to 0 if you are raising the major API version
-LIBPATCH = 3
+LIBPATCH = 4
 
 PYDEPS = ["pydantic", "pytest-interface-tester"]
 
@@ -147,7 +147,7 @@ class FivegGnbIdentityProviderAppData(BaseModel):
 class ProviderSchema(DataBagSchema):
     """Provider schema for fiveg_gnb_identity."""
 
-    app: FivegGnbIdentityProviderAppData
+    app_data: FivegGnbIdentityProviderAppData
 
 
 def data_matches_provider_schema(data: dict) -> bool:
@@ -160,7 +160,7 @@ def data_matches_provider_schema(data: dict) -> bool:
         bool: True if data matches provider schema, False otherwise.
     """
     try:
-        ProviderSchema(app=data)
+        ProviderSchema(app_data=FivegGnbIdentityProviderAppData(**data))
         return True
     except ValidationError as e:
         logger.error("Invalid data: %s", e)
@@ -208,7 +208,7 @@ class GnbIdentityProviderCharmEvents(CharmEvents):
 class GnbIdentityProvides(Object):
     """Class to be instantiated by provider of the `fiveg_gnb_identity`."""
 
-    on = GnbIdentityProviderCharmEvents()
+    on = GnbIdentityProviderCharmEvents()  # type: ignore
 
     def __init__(self, charm: CharmBase, relation_name: str):
         """Observe relation joined event.
@@ -288,7 +288,7 @@ class GnbIdentityRequirerCharmEvents(CharmEvents):
 class GnbIdentityRequires(Object):
     """Class to be instantiated by requirer of the `fiveg_gnb_identity`."""
 
-    on = GnbIdentityRequirerCharmEvents()
+    on = GnbIdentityRequirerCharmEvents()  # type: ignore
 
     def __init__(self, charm: CharmBase, relation_name: str):
         """Observes relation joined and relation changed events.
@@ -310,7 +310,7 @@ class GnbIdentityRequires(Object):
             event (RelationChangedEvent): Juju event
         """
         relation_data = event.relation.data
-        gnb_name = relation_data[event.app].get("gnb_name")  # type: ignore[index]
-        tac = relation_data[event.app].get("tac")  # type: ignore[index]
+        gnb_name = relation_data[event.app].get("gnb_name")
+        tac = relation_data[event.app].get("tac")
         if gnb_name and tac:
             self.on.fiveg_gnb_identity_available.emit(gnb_name=gnb_name, tac=tac)

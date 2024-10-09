@@ -1,52 +1,74 @@
-# Copyright 2023 Canonical Ltd.
+# Copyright 2024 Canonical Ltd.
 # See LICENSE file for licensing details.
 
-from unittest.mock import call, patch
 
 import pytest
-from ops import BoundEvent, testing
-from test_charms.test_requirer_charm.src.charm import WhateverCharm  # type: ignore[import]
+import scenario
+from ops.charm import CharmBase
 
-TEST_CHARM_PATH = "charms.sdcore_gnbsim_k8s.v0.fiveg_gnb_identity.GnbIdentityRequirerCharmEvents"
-RELATION_NAME = "fiveg_gnb_identity"
+from lib.charms.sdcore_gnbsim_k8s.v0.fiveg_gnb_identity import (
+    GnbIdentityAvailableEvent,
+    GnbIdentityRequires,
+)
 
-class TestGnbIdentityRequires:
 
-    patcher_gnb_identity = patch(f"{TEST_CHARM_PATH}.fiveg_gnb_identity_available")
+class DummyFivegGNBIdentityRequirerCharm(CharmBase):
+    """Dummy charm implementing the requirer side of the fiveg_gnb_identity interface."""
 
-    @pytest.fixture()
-    def setUp(self) -> None:
-        self.mock_gnb_identity = TestGnbIdentityRequires.patcher_gnb_identity.start()
-        self.mock_gnb_identity.__class__ = BoundEvent
+    def __init__(self, *args):
+        super().__init__(*args)
+        self.gnb_identity_requirer = GnbIdentityRequires(self, "fiveg_gnb_identity")
 
-    def tearDown(self) -> None:
-        patch.stopall()
 
+class TestFiveGGNBIdentityProvider:
     @pytest.fixture(autouse=True)
-    def harness(self, setUp, request):
-        self.harness = testing.Harness(WhateverCharm)
-        self.harness.begin()
-        yield self.harness
-        self.harness.cleanup()
-        request.addfinalizer(self.tearDown)
+    def context(self):
+        self.ctx = scenario.Context(
+            charm_type=DummyFivegGNBIdentityRequirerCharm,
+            meta={
+                "name": "gnb-identity-requirer-charm",
+                "requires": {"fiveg_gnb_identity": {"interface": "fiveg_gnb_identity"}},
+            },
+        )
 
-    def test_given_relation_with_gnb_identity_provider_when_gnb_identity_available_event_then_gnb_identity_information_is_provided(  # noqa: E501
+    def test_given_valid_relation_data_when_relation_changed_then_gnb_identity_available_event_is_emitted(  # noqa: E501
         self,
     ):
-        test_gnb_name = "gnb0055"
-        test_tac = 1234
-        relation_id = self.harness.add_relation(
-            relation_name=RELATION_NAME, remote_app="whatever-app"
+        fiveg_gnb_identity_relation = scenario.Relation(
+            endpoint="fiveg_gnb_identity",
+            interface="fiveg_gnb_identity",
+            remote_app_data={
+                "tac": "1",
+                "gnb_name": "gnb",
+            },
         )
-        self.harness.add_relation_unit(relation_id, "whatever-app/0")
-
-        self.harness.update_relation_data(
-            relation_id=relation_id,
-            app_or_unit="whatever-app",
-            key_values={"gnb_name": test_gnb_name, "tac": str(test_tac)},
+        state_in = scenario.State(
+            leader=True,
+            relations=[fiveg_gnb_identity_relation],
         )
 
-        calls = [
-            call.emit(gnb_name=test_gnb_name, tac=str(test_tac)),
-        ]
-        self.mock_gnb_identity.assert_has_calls(calls)
+        self.ctx.run(self.ctx.on.relation_changed(fiveg_gnb_identity_relation), state_in)
+
+        assert len(self.ctx.emitted_events) == 2
+        assert isinstance(self.ctx.emitted_events[1], GnbIdentityAvailableEvent)
+        assert self.ctx.emitted_events[1].gnb_name == "gnb"
+        assert self.ctx.emitted_events[1].tac == "1"
+
+    def test_given_invalid_relation_data_when_relation_changed_then_gnb_identity_available_event_not_emitted(  # noqa: E501
+        self,
+    ):
+        fiveg_gnb_identity_relation = scenario.Relation(
+            endpoint="fiveg_gnb_identity",
+            interface="fiveg_gnb_identity",
+            remote_app_data={
+                "tac": "1",
+            },
+        )
+        state_in = scenario.State(
+            leader=True,
+            relations=[fiveg_gnb_identity_relation],
+        )
+
+        self.ctx.run(self.ctx.on.relation_changed(fiveg_gnb_identity_relation), state_in)
+
+        assert len(self.ctx.emitted_events) == 1
