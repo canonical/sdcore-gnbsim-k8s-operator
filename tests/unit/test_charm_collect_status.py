@@ -5,8 +5,7 @@
 import tempfile
 
 import pytest
-import scenario
-from ops import ActiveStatus, BlockedStatus, WaitingStatus
+from ops import ActiveStatus, BlockedStatus, WaitingStatus, testing
 
 from tests.unit.fixtures import GNBSUMUnitTestFixtures
 
@@ -32,7 +31,7 @@ class TestCharmCollectUnitStatus(GNBSUMUnitTestFixtures):
     def test_given_invalid_config_when_collect_unit_status_then_status_is_blocked(
         self, config_param
     ):
-        state_in = scenario.State(
+        state_in = testing.State(
             leader=True,
             config={config_param: ""},
         )
@@ -44,7 +43,7 @@ class TestCharmCollectUnitStatus(GNBSUMUnitTestFixtures):
         )
 
     def test_given_n2_relation_not_created_when_collect_unit_status_then_status_is_waiting(self):
-        state_in = scenario.State(
+        state_in = testing.State(
             leader=True,
         )
 
@@ -53,18 +52,18 @@ class TestCharmCollectUnitStatus(GNBSUMUnitTestFixtures):
         assert state_out.unit_status == BlockedStatus("Waiting for N2 relation to be created")
 
     def test_given_cant_connect_to_workload_when_collect_unit_status_then_status_is_waiting(self):
-        n2_relation = scenario.Relation(endpoint="fiveg-n2", interface="fiveg_n2")
-        container = scenario.Container(name="gnbsim", can_connect=False)
-        state_in = scenario.State(leader=True, relations=[n2_relation], containers=[container])
+        n2_relation = testing.Relation(endpoint="fiveg-n2", interface="fiveg_n2")
+        container = testing.Container(name="gnbsim", can_connect=False)
+        state_in = testing.State(leader=True, relations=[n2_relation], containers=[container])
 
         state_out = self.ctx.run(self.ctx.on.collect_unit_status(), state_in)
 
         assert state_out.unit_status == WaitingStatus("Waiting for container to be ready")
 
     def test_given_storage_not_attached_when_collect_unit_status_then_status_is_waiting(self):
-        n2_relation = scenario.Relation(endpoint="fiveg-n2", interface="fiveg_n2")
-        container = scenario.Container(name="gnbsim", can_connect=True)
-        state_in = scenario.State(leader=True, relations=[n2_relation], containers=[container])
+        n2_relation = testing.Relation(endpoint="fiveg-n2", interface="fiveg_n2")
+        container = testing.Container(name="gnbsim", can_connect=True)
+        state_in = testing.State(leader=True, relations=[n2_relation], containers=[container])
 
         state_out = self.ctx.run(self.ctx.on.collect_unit_status(), state_in)
 
@@ -72,18 +71,18 @@ class TestCharmCollectUnitStatus(GNBSUMUnitTestFixtures):
 
     def test_given_multus_not_available_when_collect_unit_status_then_status_is_waiting(self):
         self.mock_k8s_multus.multus_is_available.return_value = False
-        n2_relation = scenario.Relation(endpoint="fiveg-n2", interface="fiveg_n2")
-        container = scenario.Container(
+        n2_relation = testing.Relation(endpoint="fiveg-n2", interface="fiveg_n2")
+        container = testing.Container(
             name="gnbsim",
             can_connect=True,
             mounts={
-                "config": scenario.Mount(
+                "config": testing.Mount(
                     location="/etc/gnbsim",
                     source=tempfile.mkdtemp(),
                 )
             },
         )
-        state_in = scenario.State(leader=True, relations=[n2_relation], containers=[container])
+        state_in = testing.State(leader=True, relations=[n2_relation], containers=[container])
 
         state_out = self.ctx.run(self.ctx.on.collect_unit_status(), state_in)
 
@@ -92,18 +91,18 @@ class TestCharmCollectUnitStatus(GNBSUMUnitTestFixtures):
     def test_given_multus_not_ready_when_collect_unit_status_then_status_is_waiting(self):
         self.mock_k8s_multus.multus_is_available.return_value = True
         self.mock_k8s_multus.is_ready.return_value = False
-        n2_relation = scenario.Relation(endpoint="fiveg-n2", interface="fiveg_n2")
-        container = scenario.Container(
+        n2_relation = testing.Relation(endpoint="fiveg-n2", interface="fiveg_n2")
+        container = testing.Container(
             name="gnbsim",
             can_connect=True,
             mounts={
-                "config": scenario.Mount(
+                "config": testing.Mount(
                     location="/etc/gnbsim",
                     source=tempfile.mkdtemp(),
                 )
             },
         )
-        state_in = scenario.State(leader=True, relations=[n2_relation], containers=[container])
+        state_in = testing.State(leader=True, relations=[n2_relation], containers=[container])
 
         state_out = self.ctx.run(self.ctx.on.collect_unit_status(), state_in)
 
@@ -116,18 +115,18 @@ class TestCharmCollectUnitStatus(GNBSUMUnitTestFixtures):
         self.mock_k8s_multus.is_ready.return_value = True
         self.mock_n2_requirer_amf_hostname.return_value = None
         self.mock_n2_requirer_amf_port.return_value = None
-        n2_relation = scenario.Relation(endpoint="fiveg-n2", interface="fiveg_n2")
-        container = scenario.Container(
+        n2_relation = testing.Relation(endpoint="fiveg-n2", interface="fiveg_n2")
+        container = testing.Container(
             name="gnbsim",
             can_connect=True,
             mounts={
-                "config": scenario.Mount(
+                "config": testing.Mount(
                     location="/etc/gnbsim",
                     source=tempfile.mkdtemp(),
                 )
             },
         )
-        state_in = scenario.State(leader=True, relations=[n2_relation], containers=[container])
+        state_in = testing.State(leader=True, relations=[n2_relation], containers=[container])
 
         state_out = self.ctx.run(self.ctx.on.collect_unit_status(), state_in)
 
@@ -138,18 +137,18 @@ class TestCharmCollectUnitStatus(GNBSUMUnitTestFixtures):
         self.mock_k8s_multus.is_ready.return_value = True
         self.mock_n2_requirer_amf_hostname.return_value = "amf"
         self.mock_n2_requirer_amf_port.return_value = 1234
-        n2_relation = scenario.Relation(endpoint="fiveg-n2", interface="fiveg_n2")
-        container = scenario.Container(
+        n2_relation = testing.Relation(endpoint="fiveg-n2", interface="fiveg_n2")
+        container = testing.Container(
             name="gnbsim",
             can_connect=True,
             mounts={
-                "config": scenario.Mount(
+                "config": testing.Mount(
                     location="/etc/gnbsim",
                     source=tempfile.mkdtemp(),
                 )
             },
         )
-        state_in = scenario.State(leader=True, relations=[n2_relation], containers=[container])
+        state_in = testing.State(leader=True, relations=[n2_relation], containers=[container])
 
         state_out = self.ctx.run(self.ctx.on.collect_unit_status(), state_in)
 

@@ -3,7 +3,7 @@
 
 
 import pytest
-import scenario
+from ops import testing
 from ops.charm import CharmBase
 
 from lib.charms.sdcore_gnbsim_k8s.v0.fiveg_gnb_identity import (
@@ -23,7 +23,7 @@ class DummyFivegGNBIdentityRequirerCharm(CharmBase):
 class TestFiveGGNBIdentityProvider:
     @pytest.fixture(autouse=True)
     def context(self):
-        self.ctx = scenario.Context(
+        self.ctx = testing.Context(
             charm_type=DummyFivegGNBIdentityRequirerCharm,
             meta={
                 "name": "gnb-identity-requirer-charm",
@@ -34,7 +34,7 @@ class TestFiveGGNBIdentityProvider:
     def test_given_valid_relation_data_when_relation_changed_then_gnb_identity_available_event_is_emitted(  # noqa: E501
         self,
     ):
-        fiveg_gnb_identity_relation = scenario.Relation(
+        fiveg_gnb_identity_relation = testing.Relation(
             endpoint="fiveg_gnb_identity",
             interface="fiveg_gnb_identity",
             remote_app_data={
@@ -42,7 +42,7 @@ class TestFiveGGNBIdentityProvider:
                 "gnb_name": "gnb",
             },
         )
-        state_in = scenario.State(
+        state_in = testing.State(
             leader=True,
             relations=[fiveg_gnb_identity_relation],
         )
@@ -57,14 +57,14 @@ class TestFiveGGNBIdentityProvider:
     def test_given_invalid_relation_data_when_relation_changed_then_gnb_identity_available_event_not_emitted(  # noqa: E501
         self,
     ):
-        fiveg_gnb_identity_relation = scenario.Relation(
+        fiveg_gnb_identity_relation = testing.Relation(
             endpoint="fiveg_gnb_identity",
             interface="fiveg_gnb_identity",
             remote_app_data={
                 "tac": "1",
             },
         )
-        state_in = scenario.State(
+        state_in = testing.State(
             leader=True,
             relations=[fiveg_gnb_identity_relation],
         )

@@ -5,7 +5,7 @@
 import tempfile
 
 import pytest
-import scenario
+from ops import testing
 from ops.testing import ActionFailed
 
 from tests.unit.fixtures import GNBSUMUnitTestFixtures
@@ -16,17 +16,17 @@ class TestCharmStartSimulationAction(GNBSUMUnitTestFixtures):
         self,
     ):
         with tempfile.TemporaryDirectory() as temp_dir:
-            container = scenario.Container(
+            container = testing.Container(
                 name="gnbsim",
                 can_connect=True,
                 mounts={
-                    "config": scenario.Mount(
+                    "config": testing.Mount(
                         location="/etc/gnbsim",
                         source=temp_dir,
                     )
                 },
                 execs={
-                    scenario.Exec(
+                    testing.Exec(
                         command_prefix=[
                             "ip",
                             "route",
@@ -38,7 +38,7 @@ class TestCharmStartSimulationAction(GNBSUMUnitTestFixtures):
                     )
                 },
             )
-            state_in = scenario.State(
+            state_in = testing.State(
                 leader=True,
                 containers={container},
             )
@@ -52,24 +52,24 @@ class TestCharmStartSimulationAction(GNBSUMUnitTestFixtures):
         self,
     ):
         with tempfile.TemporaryDirectory() as temp_dir:
-            container = scenario.Container(
+            container = testing.Container(
                 name="gnbsim",
                 can_connect=True,
                 mounts={
-                    "config": scenario.Mount(
+                    "config": testing.Mount(
                         location="/etc/gnbsim",
                         source=temp_dir,
                     )
                 },
                 execs={
-                    scenario.Exec(
+                    testing.Exec(
                         command_prefix=["/bin/gnbsim", "--cfg", "/etc/gnbsim/gnb.conf"],
                         return_code=0,
                         stderr="Profile Status: PASS\nProfile Status: PASS\nProfile Status: FAILED\nProfile Status: PASS\nProfile Status: PASS\n",  # noqa: E501
                     )
                 },
             )
-            state_in = scenario.State(
+            state_in = testing.State(
                 leader=True,
                 containers={container},
             )
@@ -90,24 +90,24 @@ class TestCharmStartSimulationAction(GNBSUMUnitTestFixtures):
         self,
     ):
         with tempfile.TemporaryDirectory() as temp_dir:
-            container = scenario.Container(
+            container = testing.Container(
                 name="gnbsim",
                 can_connect=True,
                 mounts={
-                    "config": scenario.Mount(
+                    "config": testing.Mount(
                         location="/etc/gnbsim",
                         source=temp_dir,
                     )
                 },
                 execs={
-                    scenario.Exec(
+                    testing.Exec(
                         command_prefix=["/bin/gnbsim", "--cfg", "/etc/gnbsim/gnb.conf"],
                         return_code=0,
                         stderr="Profile Status: PASS\nProfile Status: PASS\nProfile Status: PASS\nProfile Status: PASS\nProfile Status: PASS\n",  # noqa: E501
                     )
                 },
             )
-            state_in = scenario.State(
+            state_in = testing.State(
                 leader=True,
                 containers={container},
             )
