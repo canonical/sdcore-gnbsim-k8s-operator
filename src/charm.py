@@ -24,10 +24,9 @@ from charms.sdcore_gnbsim_k8s.v0.fiveg_gnb_identity import (
 from jinja2 import Environment, FileSystemLoader
 from lightkube.models.core_v1 import ServicePort
 from lightkube.models.meta_v1 import ObjectMeta
-from ops import ActiveStatus, BlockedStatus, CollectStatusEvent, WaitingStatus
+from ops import ActiveStatus, BlockedStatus, CollectStatusEvent, WaitingStatus, main
 from ops.charm import ActionEvent, CharmBase
 from ops.framework import EventBase
-from ops.main import main
 from ops.pebble import ChangeError, ExecError
 
 logger = logging.getLogger(__name__)
@@ -208,19 +207,9 @@ class GNBSIMOperatorCharm(CharmBase):
             count = stderr.count("Profile Status: PASS")
             info = f"{count}/{NUM_PROFILES} profiles passed"
             if count == NUM_PROFILES:
-                event.set_results(
-                    {
-                        "success": "true",
-                        "info": info
-                    }
-                )
+                event.set_results({"success": "true", "info": info})
             else:
-                event.set_results(
-                    {
-                        "success": "false",
-                        "info": info
-                    }
-                )
+                event.set_results({"success": "false", "info": info})
         except ExecError as e:
             event.fail(message=f"Failed to execute simulation: {str(e.stderr)}")
         except ChangeError as e:
