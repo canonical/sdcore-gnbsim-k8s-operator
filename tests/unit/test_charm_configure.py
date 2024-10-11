@@ -4,7 +4,7 @@
 
 import tempfile
 
-import scenario
+from ops import testing
 
 from tests.unit.fixtures import GNBSUMUnitTestFixtures
 
@@ -18,18 +18,18 @@ class TestCharmConfigure(GNBSUMUnitTestFixtures):
             self.mock_k8s_multus.is_ready.return_value = True
             self.mock_n2_requirer_amf_hostname.return_value = "amf"
             self.mock_n2_requirer_amf_port.return_value = 38412
-            n2_relation = scenario.Relation(endpoint="fiveg-n2", interface="fiveg_n2")
-            container = scenario.Container(
+            n2_relation = testing.Relation(endpoint="fiveg-n2", interface="fiveg_n2")
+            container = testing.Container(
                 name="gnbsim",
                 can_connect=True,
                 mounts={
-                    "config": scenario.Mount(
+                    "config": testing.Mount(
                         location="/etc/gnbsim",
                         source=temp_dir,
                     )
                 },
                 execs={
-                    scenario.Exec(
+                    testing.Exec(
                         command_prefix=[
                             "ip",
                             "route",
@@ -41,7 +41,7 @@ class TestCharmConfigure(GNBSUMUnitTestFixtures):
                     )
                 },
             )
-            state_in = scenario.State(
+            state_in = testing.State(
                 leader=True,
                 relations=[n2_relation],
                 containers=[container],
@@ -63,21 +63,21 @@ class TestCharmConfigure(GNBSUMUnitTestFixtures):
             self.mock_k8s_multus.is_ready.return_value = True
             self.mock_n2_requirer_amf_hostname.return_value = "amf"
             self.mock_n2_requirer_amf_port.return_value = 38412
-            n2_relation = scenario.Relation(endpoint="fiveg-n2", interface="fiveg_n2")
-            gnb_identity_relation = scenario.Relation(
+            n2_relation = testing.Relation(endpoint="fiveg-n2", interface="fiveg_n2")
+            gnb_identity_relation = testing.Relation(
                 endpoint="fiveg_gnb_identity", interface="fiveg_gnb_identity"
             )
-            container = scenario.Container(
+            container = testing.Container(
                 name="gnbsim",
                 can_connect=True,
                 mounts={
-                    "config": scenario.Mount(
+                    "config": testing.Mount(
                         location="/etc/gnbsim",
                         source=temp_dir,
                     )
                 },
                 execs={
-                    scenario.Exec(
+                    testing.Exec(
                         command_prefix=[
                             "ip",
                             "route",
@@ -89,11 +89,11 @@ class TestCharmConfigure(GNBSUMUnitTestFixtures):
                     )
                 },
             )
-            state_in = scenario.State(
+            state_in = testing.State(
                 leader=True,
                 relations=[n2_relation, gnb_identity_relation],
                 containers=[container],
-                model=scenario.Model(name="my-model"),
+                model=testing.Model(name="my-model"),
                 config={"tac": "2"},
             )
 
