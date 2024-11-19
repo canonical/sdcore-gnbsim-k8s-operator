@@ -1,3 +1,32 @@
+[project]
+name = "sdcore-gnbsim-k8s-operator"
+version = "0.1.0"
+requires-python = ">=3.10"
+
+dependencies = [
+    "cosl",
+    "jinja2",
+    "lightkube",
+    "lightkube-models",
+    "ops",
+    "pydantic",
+    "pytest-interface-tester",
+]
+
+[dependency-groups]
+test = [
+    "coverage[toml]",
+    "juju>=3.5.2.1",
+    "pytest",
+    "pytest-operator",
+    "pytest-asyncio<0.23",
+]
+dev = [
+    "codespell",
+    "pyright",
+    "ruff",
+]
+
 # Testing tools configuration
 [tool.coverage.run]
 branch = true

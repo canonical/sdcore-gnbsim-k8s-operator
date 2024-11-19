@@ -6,6 +6,9 @@
 .settings/
 .project
 .pydevproject
+.charm_tracing_buffer.raw
+build/
+src/sdcore_gnbsim_k8s_operator.egg-info
 
 # Python
 **/venv/**
