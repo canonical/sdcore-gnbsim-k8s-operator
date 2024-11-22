@@ -22,7 +22,7 @@ resources:
   gnbsim-image:
     type: oci-image
     description: OCI image for 5G gnbsim
-    upstream-source: ghcr.io/canonical/sdcore-gnbsim:1.4.3
+    upstream-source: ghcr.io/canonical/sdcore-gnbsim:1.4.5
 
 storage:
   config:
@@ -44,18 +44,17 @@ assumes:
   - juju >= 3.4
 
 type: charm
-bases:
-  - build-on:
-    - name: ubuntu
-      channel: "22.04"
-    run-on:
-    - name: ubuntu
-      channel: "22.04"
+base: ubuntu@24.04
+build-base: ubuntu@24.04
+platforms:
+  amd64:
 
 parts:
   charm:
     source: .
     plugin: charm
+    charm-requirements:
+      - requirements.txt
     build-packages:
       - libffi-dev
       - libssl-dev
