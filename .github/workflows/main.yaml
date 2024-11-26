@@ -1,12 +1,10 @@
-name: Main branch CI
+name: Release 1.5 CI
 
 on:
   pull_request:
     branches:
-      - main
+      - v1.5
   push:
-  schedule:
-    - cron: '20 6 * * 0'
 
 jobs:
   codeql:
@@ -50,49 +48,9 @@ jobs:
       - static-analysis
       - unit-tests-with-coverage
       - integration-test
-    if: ${{ github.ref_name == 'main' }}
+    if: ${{ github.ref_name == 'v1.5' }}
     uses: canonical/sdcore-github-workflows/.github/workflows/publish-charm.yaml@v2.2.0
     with:
       track-name: 1.5
-    secrets:
-      CHARMCRAFT_AUTH: ${{ secrets.CHARMCRAFT_AUTH }}
-
-  publish-charm-on-push:
-    name: Publish Developer Charm To Branch
-    needs:
-      - lint-report
-      - static-analysis
-      - unit-tests-with-coverage
-      - integration-test
-    if: ${{ (github.ref_name != 'main') && (github.event_name == 'push') }}
-    uses: canonical/sdcore-github-workflows/.github/workflows/publish-charm.yaml@v2.2.0
-    with:
-      branch-name: ${{ github.ref_name }}
-      track-name: 1.5
-    secrets:
-      CHARMCRAFT_AUTH: ${{ secrets.CHARMCRAFT_AUTH }}
-
-  fiveg-gnb-identity-lib-needs-publishing:
-    runs-on: ubuntu-24.04
-    outputs:
-      needs-publishing: ${{ steps.changes.outputs.fiveg_gnb_identity }}
-    steps:
-      - uses: actions/checkout@v4
-      - uses: dorny/paths-filter@v3
-        id: changes
-        with:
-          filters: |
-            fiveg_gnb_identity:
-              - 'lib/charms/sdcore_gnbsim_k8s/v0/fiveg_gnb_identity.py'
-
-  publish-fiveg-gnb-identity-lib:
-    name: Publish Lib
-    needs:
-      - publish-charm
-      - fiveg-gnb-identity-lib-needs-publishing
-    if: ${{ github.ref_name == 'main' }}
-    uses: canonical/sdcore-github-workflows/.github/workflows/publish-lib.yaml@v2.2.0
-    with:
-      lib-name: "charms.sdcore_gnbsim_k8s.v0.fiveg_gnb_identity"
     secrets:
       CHARMCRAFT_AUTH: ${{ secrets.CHARMCRAFT_AUTH }}
