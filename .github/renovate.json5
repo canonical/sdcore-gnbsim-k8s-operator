@@ -28,7 +28,8 @@
     {
       // Bumping "pytest-asyncio" over 0.23 breaks the integration tests
       "matchPackageNames": ["pytest-asyncio"],
-      "matchUpdateTypes": ["major"]
+      "matchUpdateTypes": ["minor"],
+      "enabled": false
     },
     {
       "matchBaseBranches": ["main", "v*"],
