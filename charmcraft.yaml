@@ -29,11 +29,9 @@ storage:
     type: filesystem
     minimum-size: 1M
 
-provides:
-  fiveg_gnb_identity:
-    interface: fiveg_gnb_identity
-
 requires:
+  fiveg_core_gnb:
+    interface: fiveg_core_gnb
   fiveg-n2:
     interface: fiveg_n2
   logging:
