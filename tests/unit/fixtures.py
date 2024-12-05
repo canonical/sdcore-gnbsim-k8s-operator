@@ -16,8 +16,12 @@ class GNBSUMUnitTestFixtures:
         "charm.N2Requires.amf_hostname", new_callable=PropertyMock
     )
     patcher_n2_requirer_amf_port = patch("charm.N2Requires.amf_port", new_callable=PropertyMock)
-    patcher_gnb_identity_publish_information = patch(
-        "charm.GnbIdentityProvides.publish_gnb_identity_information"
+    patcher_publish_gnb_information = patch("charm.FivegCoreGnbRequires.publish_gnb_information")
+    patcher_gnb_core_remote_tac = patch(
+        "charm.FivegCoreGnbRequires.tac", new_callable=PropertyMock
+    )
+    patcher_gnb_core_remote_plmns = patch(
+        "charm.FivegCoreGnbRequires.plmns", new_callable=PropertyMock
     )
 
     @pytest.fixture(autouse=True)
@@ -30,8 +34,14 @@ class GNBSUMUnitTestFixtures:
         self.mock_n2_requirer_amf_port = (
             GNBSUMUnitTestFixtures.patcher_n2_requirer_amf_port.start()
         )
-        self.mock_gnb_identity_publish_information = (
-            GNBSUMUnitTestFixtures.patcher_gnb_identity_publish_information.start()
+        self.mock_publish_gnb_information = (
+            GNBSUMUnitTestFixtures.patcher_publish_gnb_information.start()
+        )
+        self.mock_gnb_core_remote_tac = (
+            GNBSUMUnitTestFixtures.patcher_gnb_core_remote_tac.start()
+        )
+        self.mock_gnb_core_remote_plmns = (
+            GNBSUMUnitTestFixtures.patcher_gnb_core_remote_plmns.start()
         )
         yield
         request.addfinalizer(self.teardown)
