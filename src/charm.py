@@ -116,8 +116,11 @@ class GNBSIMOperatorCharm(CharmBase):
             event.add_status(WaitingStatus("Waiting for N2 information"))
             logger.info("Waiting for N2 information")
             return
-        if not self._core_gnb_requirer.tac or not self._core_gnb_requirer.plmns:
+        if not self._core_gnb_requirer.tac or not (plmns := self._core_gnb_requirer.plmns):
             event.add_status(WaitingStatus("Waiting for TAC and PLMNs configuration"))
+            return
+        if not self._is_valid_plmns(plmns[0]):
+            event.add_status(BlockedStatus("Invalid PLMNs configuration"))
             return
         event.add_status(ActiveStatus())
 
@@ -163,8 +166,11 @@ class GNBSIMOperatorCharm(CharmBase):
             return
         if not (dnn := self._get_dnn_from_config()):
             return
-        if (not (tac := self._core_gnb_requirer.tac) or
-            not (plmns := self._core_gnb_requirer.plmns)):
+        if not (tac := self._core_gnb_requirer.tac):
+            return
+        if not (plmns := self._core_gnb_requirer.plmns):
+            return
+        if not self._is_valid_plmns(plmns[0]):
             return
         content = self._render_config_file(
             amf_hostname=self._n2_requirer.amf_hostname,
@@ -173,7 +179,7 @@ class GNBSIMOperatorCharm(CharmBase):
             icmp_packet_destination=icmp_packet_destination,
             imsi=imsi,
             usim_sequence_number=usim_sequence_number,
-            plmns=plmns,
+            plmn=plmns[0],
             tac=tac,
             usim_opc=usim_opc,
             usim_key=usim_key,
@@ -181,6 +187,9 @@ class GNBSIMOperatorCharm(CharmBase):
         )
         self._write_config_file(content=content)
         self._create_upf_route()
+
+    def _is_valid_plmns(self, plmn) -> bool:
+        return plmn.sd is not None
 
     def _on_start_simulation_action(self, event: ActionEvent) -> None:
         """Run gnbsim simulation leveraging configuration file."""
@@ -325,7 +334,7 @@ class GNBSIMOperatorCharm(CharmBase):
         gnb_ip_address: str,
         icmp_packet_destination: str,
         imsi: str,
-        plmns: List[PLMNConfig],
+        plmn: PLMNConfig,
         tac: int,
         usim_key: str,
         usim_opc: str,
@@ -352,17 +361,18 @@ class GNBSIMOperatorCharm(CharmBase):
         """
         jinja2_env = Environment(loader=FileSystemLoader("src/templates"))
         template = jinja2_env.get_template("config.yaml.j2")
+
         return template.render(
             amf_hostname=amf_hostname,
             amf_port=amf_port,
             gnb_ip_address=gnb_ip_address,
             icmp_packet_destination=icmp_packet_destination,
             imsi=imsi,
-            mcc=plmns[0].mcc,
-            mnc=plmns[0].mnc,
-            sd=plmns[0].sd,
-            sst=plmns[0].sst,
-            tac=format(tac, '06x'),
+            mcc=plmn.mcc,
+            mnc=plmn.mnc,
+            sd=format(plmn.sd, '06X'),
+            sst=plmn.sst,
+            tac=format(tac, '06X'),
             usim_key=usim_key,
             usim_opc=usim_opc,
             usim_sequence_number=usim_sequence_number,
