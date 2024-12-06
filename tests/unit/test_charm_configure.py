@@ -5,6 +5,7 @@
 import os
 import tempfile
 
+import pytest
 from charms.sdcore_nms_k8s.v0.fiveg_core_gnb import PLMNConfig
 from ops import testing
 
@@ -19,7 +20,7 @@ class TestCharmConfigure(GNBSUMUnitTestFixtures):
             self.mock_n2_requirer_amf_hostname.return_value = "amf"
             self.mock_n2_requirer_amf_port.return_value = 38412
             self.mock_gnb_core_remote_tac.return_value = 1
-            plmns = [PLMNConfig(mcc="001", mnc="01", sst=1, sd=102030)]
+            plmns = [PLMNConfig(mcc="001", mnc="01", sst=1, sd=1056816)]
             self.mock_gnb_core_remote_plmns.return_value = plmns
             core_gnb_relation = testing.Relation(
                 endpoint="fiveg_core_gnb", interface="fiveg_core_gnb"
@@ -113,16 +114,25 @@ class TestCharmConfigure(GNBSUMUnitTestFixtures):
                 gnb_name="my-model-gnbsim-sdcore-gnbsim-k8s"
             )
 
+    @pytest.mark.parametrize(
+        "tac,plmns",
+        [
+            pytest.param(None, None, id="tac_and_plmns_are_none"),
+            pytest.param(1, None, id="plmns_is_none"),
+            pytest.param(None, [PLMNConfig(mcc="001", mnc="01", sst=1, sd=1)], id="tac_is_none"),
+            pytest.param(3, [PLMNConfig(mcc="001", mnc="01", sst=1)], id="plmns_without_sd"),
+        ],
+    )
     def test_given_core_gnb_information_unavailable_when_configure_then_config_file_is_not_pushed(
-        self,
+        self, tac, plmns
     ):
         with tempfile.TemporaryDirectory() as temp_dir:
             self.mock_k8s_multus.multus_is_available.return_value = True
             self.mock_k8s_multus.is_ready.return_value = True
             self.mock_n2_requirer_amf_hostname.return_value = "amf"
             self.mock_n2_requirer_amf_port.return_value = 38412
-            self.mock_gnb_core_remote_tac.return_value = None
-            self.mock_gnb_core_remote_plmns.return_value = None
+            self.mock_gnb_core_remote_tac.return_value = tac
+            self.mock_gnb_core_remote_plmns.return_value = plmns
             core_gnb_relation = testing.Relation(
                 endpoint="fiveg_core_gnb", interface="fiveg_core_gnb"
             )
@@ -168,7 +178,7 @@ class TestCharmConfigure(GNBSUMUnitTestFixtures):
             self.mock_n2_requirer_amf_hostname.return_value = "amf"
             self.mock_n2_requirer_amf_port.return_value = 38412
             self.mock_gnb_core_remote_tac.return_value = 1
-            self.mock_gnb_core_remote_plmns.return_value = [PLMNConfig(mcc="001", mnc="01", sst=1)]
+            self.mock_gnb_core_remote_plmns.return_value = [PLMNConfig(mcc="001", mnc="01", sst=1, sd=2)]
             n2_relation = testing.Relation(endpoint="fiveg-n2", interface="fiveg_n2")
             container = testing.Container(
                 name="gnbsim",
