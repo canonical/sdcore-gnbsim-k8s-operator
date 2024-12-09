@@ -29,11 +29,9 @@ storage:
     type: filesystem
     minimum-size: 1M
 
-provides:
-  fiveg_gnb_identity:
-    interface: fiveg_gnb_identity
-
 requires:
+  fiveg_core_gnb:
+    interface: fiveg_core_gnb
   fiveg-n2:
     interface: fiveg_n2
   logging:
@@ -84,14 +82,6 @@ config:
       type: string
       default: "001010100007487"
       description: International Mobile Subscriber Identity
-    mcc:
-      type: string
-      default: "001"
-      description: Mobile Country Code
-    mnc:
-      type: string
-      default: "01"
-      description: Mobile Network code
     usim-key:
       type: string
       default: "5122250214c33e723a5dd523fc145fc0"
@@ -104,18 +94,6 @@ config:
       type: string
       default: "16f3b3f70fc2"
       description: USIM sequence number
-    sd:
-      type: string
-      default: "102030"
-      description: Slice ID
-    sst:
-      type: int
-      default: 1
-      description: Slice Service Type
-    tac:
-      type: string
-      default: "000001"
-      description: Tracking Area Code. Hexadecimal value represented as a string.
     upf-subnet:
       type: string
       default: "192.168.252.0/24"
