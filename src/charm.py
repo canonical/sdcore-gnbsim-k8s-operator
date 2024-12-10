@@ -76,7 +76,7 @@ class GNBSIMOperatorCharm(CharmBase):
         self.framework.observe(self.on[CORE_GNB_RELATION_NAME].relation_changed, self._configure)
         self.framework.observe(self.on.remove, self._on_remove)
 
-    def _on_collect_unit_status(self, event: CollectStatusEvent):
+    def _on_collect_unit_status(self, event: CollectStatusEvent):  # noqa: C901
         """Check the unit status and set to Unit when CollectStatusEvent is fired.
 
         Set the workload version if present in workload
@@ -119,7 +119,7 @@ class GNBSIMOperatorCharm(CharmBase):
         if not self._core_gnb_requirer.tac or not (plmns := self._core_gnb_requirer.plmns):
             event.add_status(WaitingStatus("Waiting for TAC and PLMNs configuration"))
             return
-        if not self._is_valid_plmns(plmns[0]):
+        if not self._is_valid_plmn(plmns[0]):
             event.add_status(BlockedStatus("Invalid PLMNs configuration"))
             return
         event.add_status(ActiveStatus())
@@ -170,7 +170,7 @@ class GNBSIMOperatorCharm(CharmBase):
             return
         if not (plmns := self._core_gnb_requirer.plmns):
             return
-        if not self._is_valid_plmns(plmns[0]):
+        if not self._is_valid_plmn(plmns[0]):
             return
         content = self._render_config_file(
             amf_hostname=self._n2_requirer.amf_hostname,
@@ -188,7 +188,7 @@ class GNBSIMOperatorCharm(CharmBase):
         self._write_config_file(content=content)
         self._create_upf_route()
 
-    def _is_valid_plmns(self, plmn) -> bool:
+    def _is_valid_plmn(self, plmn) -> bool:
         return plmn.sd is not None
 
     def _on_start_simulation_action(self, event: ActionEvent) -> None:
@@ -349,7 +349,7 @@ class GNBSIMOperatorCharm(CharmBase):
             gnb_ip_address: gNodeB IP address
             icmp_packet_destination: Default ICMP packet destination
             imsi: International Mobile Subscriber Identity
-            plmns: list of PLMN
+            plmn: PLMN configuration
             tac: Tracking Area Code
             usim_key: USIM key
             usim_opc: USIM OPC
@@ -361,7 +361,6 @@ class GNBSIMOperatorCharm(CharmBase):
         """
         jinja2_env = Environment(loader=FileSystemLoader("src/templates"))
         template = jinja2_env.get_template("config.yaml.j2")
-
         return template.render(
             amf_hostname=amf_hostname,
             amf_port=amf_port,

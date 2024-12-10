@@ -178,7 +178,8 @@ class TestCharmConfigure(GNBSUMUnitTestFixtures):
             self.mock_n2_requirer_amf_hostname.return_value = "amf"
             self.mock_n2_requirer_amf_port.return_value = 38412
             self.mock_gnb_core_remote_tac.return_value = 1
-            self.mock_gnb_core_remote_plmns.return_value = [PLMNConfig(mcc="001", mnc="01", sst=1, sd=2)]
+            plmns = [PLMNConfig(mcc="001", mnc="01", sst=1, sd=2)]
+            self.mock_gnb_core_remote_plmns.return_value = plmns
             n2_relation = testing.Relation(endpoint="fiveg-n2", interface="fiveg_n2")
             container = testing.Container(
                 name="gnbsim",
@@ -211,7 +212,3 @@ class TestCharmConfigure(GNBSUMUnitTestFixtures):
             self.ctx.run(self.ctx.on.update_status(), state_in)
 
             assert not os.path.exists(f"{temp_dir}/gnb.conf")
-
-
-    # TEST MULTIPLE PLMNS
-    # TEST PLMN SD ABSENT
