@@ -250,7 +250,9 @@ class TestCharmCollectUnitStatus(GNBSUMUnitTestFixtures):
 
         state_out = self.ctx.run(self.ctx.on.collect_unit_status(), state_in)
 
-        assert state_out.unit_status == BlockedStatus("Invalid PLMNs configuration")
+        assert state_out.unit_status == BlockedStatus(
+                "Invalid configuration: SD is missing from PLMN"
+            )
 
     def test_pre_requisites_met_when_collect_unit_status_then_status_is_active(self):
         self.mock_k8s_multus.multus_is_available.return_value = True

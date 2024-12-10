@@ -119,8 +119,8 @@ class GNBSIMOperatorCharm(CharmBase):
         if not self._core_gnb_requirer.tac or not (plmns := self._core_gnb_requirer.plmns):
             event.add_status(WaitingStatus("Waiting for TAC and PLMNs configuration"))
             return
-        if not self._is_valid_plmn(plmns[0]):
-            event.add_status(BlockedStatus("Invalid PLMNs configuration"))
+        if not self._is_sd_present_in_plmn(plmns[0]):
+            event.add_status(BlockedStatus("Invalid configuration: SD is missing from PLMN"))
             return
         event.add_status(ActiveStatus())
 
@@ -170,7 +170,7 @@ class GNBSIMOperatorCharm(CharmBase):
             return
         if not (plmns := self._core_gnb_requirer.plmns):
             return
-        if not self._is_valid_plmn(plmns[0]):
+        if not self._is_sd_present_in_plmn(plmns[0]):
             return
         content = self._render_config_file(
             amf_hostname=self._n2_requirer.amf_hostname,
@@ -188,7 +188,7 @@ class GNBSIMOperatorCharm(CharmBase):
         self._write_config_file(content=content)
         self._create_upf_route()
 
-    def _is_valid_plmn(self, plmn) -> bool:
+    def _is_sd_present_in_plmn(self, plmn) -> bool:
         return plmn.sd is not None
 
     def _on_start_simulation_action(self, event: ActionEvent) -> None:
