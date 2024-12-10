@@ -258,7 +258,8 @@ class TestCharmCollectUnitStatus(GNBSUMUnitTestFixtures):
         self.mock_n2_requirer_amf_hostname.return_value = "amf"
         self.mock_n2_requirer_amf_port.return_value = 1234
         self.mock_gnb_core_remote_tac.return_value = 2
-        self.mock_gnb_core_remote_plmns.return_value = [PLMNConfig(mcc="001", mnc="01", sst=1, sd=3)]
+        plmns = [PLMNConfig(mcc="001", mnc="01", sst=1, sd=3)]
+        self.mock_gnb_core_remote_plmns.return_value = plmns
         n2_relation = testing.Relation(endpoint="fiveg-n2", interface="fiveg_n2")
         core_gnb_relation = testing.Relation(
                 endpoint="fiveg_core_gnb", interface="fiveg_core_gnb"
