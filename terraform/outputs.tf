@@ -10,11 +10,6 @@ output "requires" {
   value = {
     fiveg_n2 = "fiveg-n2"
     logging  = "logging"
-  }
-}
-
-output "requires" {
-  value = {
     fiveg_core_gnb = "fiveg_core_gnb"
   }
 }
