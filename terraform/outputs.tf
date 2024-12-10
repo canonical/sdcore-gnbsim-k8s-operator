@@ -8,13 +8,8 @@ output "app_name" {
 
 output "requires" {
   value = {
-    fiveg_n2 = "fiveg-n2"
-    logging  = "logging"
-  }
-}
-
-output "provides" {
-  value = {
-    fiveg_gnb_identity = "fiveg_gnb_identity"
+    fiveg_core_gnb = "fiveg_core_gnb"
+    fiveg_n2       = "fiveg-n2"
+    logging        = "logging"
   }
 }
