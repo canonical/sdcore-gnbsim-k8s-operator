@@ -13,8 +13,8 @@ output "requires" {
   }
 }
 
-output "provides" {
+output "requires" {
   value = {
-    fiveg_gnb_identity = "fiveg_gnb_identity"
+    fiveg_core_gnb = "fiveg_core_gnb"
   }
 }

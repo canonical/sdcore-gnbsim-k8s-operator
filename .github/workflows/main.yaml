@@ -71,28 +71,3 @@ jobs:
       track-name: 1.6
     secrets:
       CHARMCRAFT_AUTH: ${{ secrets.CHARMCRAFT_AUTH }}
-
-  fiveg-gnb-identity-lib-needs-publishing:
-    runs-on: ubuntu-24.04
-    outputs:
-      needs-publishing: ${{ steps.changes.outputs.fiveg_gnb_identity }}
-    steps:
-      - uses: actions/checkout@v4
-      - uses: dorny/paths-filter@v3
-        id: changes
-        with:
-          filters: |
-            fiveg_gnb_identity:
-              - 'lib/charms/sdcore_gnbsim_k8s/v0/fiveg_gnb_identity.py'
-
-  publish-fiveg-gnb-identity-lib:
-    name: Publish Lib
-    needs:
-      - publish-charm
-      - fiveg-gnb-identity-lib-needs-publishing
-    if: ${{ github.ref_name == 'main' }}
-    uses: canonical/sdcore-github-workflows/.github/workflows/publish-lib.yaml@v2.3.0
-    with:
-      lib-name: "charms.sdcore_gnbsim_k8s.v0.fiveg_gnb_identity"
-    secrets:
-      CHARMCRAFT_AUTH: ${{ secrets.CHARMCRAFT_AUTH }}
