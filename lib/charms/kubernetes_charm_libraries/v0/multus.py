@@ -107,7 +107,7 @@ LIBAPI = 0
 
 # Increment this PATCH version before using `charmcraft publish-lib` or reset
 # to 0 if you are raising the major API version
-LIBPATCH = 16
+LIBPATCH = 17
 
 
 logger = logging.getLogger(__name__)
@@ -124,7 +124,7 @@ class NetworkAttachmentDefinition(_NetworkAttachmentDefinition):
     """Object to represent Kubernetes Multus NetworkAttachmentDefinition."""
 
     def __eq__(self, other):
-        """Validates equality between two NetworkAttachmentDefinitions object."""
+        """Validate equality between two NetworkAttachmentDefinitions object."""
         assert self.metadata
         return self.metadata.name == other.metadata.name and self.spec == other.spec
 
@@ -141,7 +141,7 @@ class NetworkAnnotation:
     ips: Optional[List[str]] = None
 
     def dict(self) -> dict:
-        """Returns a NetworkAnnotation in the form of a dictionary.
+        """Return a NetworkAnnotation in the form of a dictionary.
 
         Returns:
             dict: Dictionary representation of the NetworkAnnotation
@@ -165,7 +165,7 @@ class KubernetesClient:
         self.namespace = namespace
 
     def delete_pod(self, pod_name: str) -> None:
-        """Deleting given pod.
+        """Delete given pod.
 
         Args:
             pod_name (str): Pod name
@@ -182,7 +182,7 @@ class KubernetesClient:
         cap_net_admin: bool,
         privileged: bool,
     ) -> bool:
-        """Returns whether pod has the requisite network annotation and NET_ADMIN capability.
+        """Return whether pod has the requisite network annotation and NET_ADMIN capability.
 
         Args:
             pod_name: Pod name
@@ -220,7 +220,7 @@ class KubernetesClient:
     def network_attachment_definition_is_created(
         self, network_attachment_definition: NetworkAttachmentDefinition
     ) -> bool:
-        """Returns whether a NetworkAttachmentDefinition is created.
+        """Return whether a NetworkAttachmentDefinition is created.
 
         Args:
             network_attachment_definition: NetworkAttachmentDefinition
@@ -263,7 +263,7 @@ class KubernetesClient:
     def create_network_attachment_definition(
         self, network_attachment_definition: GenericNamespacedResource
     ) -> None:
-        """Creates a NetworkAttachmentDefinition.
+        """Create a NetworkAttachmentDefinition.
 
         Args:
             network_attachment_definition: NetworkAttachmentDefinition object
@@ -286,7 +286,7 @@ class KubernetesClient:
         )
 
     def list_network_attachment_definitions(self) -> list[NetworkAttachmentDefinition]:
-        """Lists NetworkAttachmentDefinitions in a given namespace.
+        """List NetworkAttachmentDefinitions in a given namespace.
 
         Returns:
             list[NetworkAttachmentDefinition]: List of NetworkAttachmentDefinitions
@@ -301,7 +301,7 @@ class KubernetesClient:
             raise KubernetesMultusError("Could not list NetworkAttachmentDefinitions")
 
     def delete_network_attachment_definition(self, name: str) -> None:
-        """Deletes network attachment definition based on name.
+        """Delete network attachment definition based on name.
 
         Args:
             name: NetworkAttachmentDefinition name
@@ -324,7 +324,7 @@ class KubernetesClient:
         cap_net_admin: bool,
         privileged: bool,
     ) -> None:
-        """Patches a statefulset with Multus annotation and NET_ADMIN capability.
+        """Patch a statefulset with Multus annotation and NET_ADMIN capability.
 
         Args:
             name: Statefulset name
@@ -390,7 +390,7 @@ class KubernetesClient:
         name: str,
         container_name: str,
     ) -> None:
-        """Removes annotations, security privilege and NET_ADMIN capability from stateful set.
+        """Remove annotations, security privilege and NET_ADMIN capability from stateful set.
 
         Args:
             name: Statefulset name
@@ -449,7 +449,7 @@ class KubernetesClient:
         cap_net_admin: bool,
         privileged: bool,
     ) -> bool:
-        """Returns whether the statefulset has the expected multus annotation.
+        """Return whether the statefulset has the expected multus annotation.
 
         Args:
             name: Statefulset name.
@@ -489,7 +489,7 @@ class KubernetesClient:
         network_annotations: list[NetworkAnnotation],
         pod: Union[PodTemplateSpec, Pod],
     ) -> bool:
-        """Returns whether a pod is patched with network annotations and security context.
+        """Return whether a pod is patched with network annotations and security context.
 
         Args:
             container_name: Container name
@@ -539,7 +539,7 @@ class KubernetesClient:
         cap_net_admin: bool,
         privileged: bool,
     ) -> bool:
-        """Returns whether container spec contains the expected security context.
+        """Return whether container spec contains the expected security context.
 
         Args:
             containers: list of Containers
@@ -573,6 +573,16 @@ class KubernetesClient:
                     res=NetworkAttachmentDefinition, namespace=self.namespace
                 )
             )
+        except ApiError as e:
+            if e.status.reason == "NotFound":
+                logger.debug("NetworkAttachmentDefinition resource not found")
+            elif e.status.reason == "Unauthorized":
+                logger.debug("kube-apiserver not ready yet")
+            else:
+                raise KubernetesMultusError(
+                    "Unexpected outcome when checking for Multus availability"
+                )
+            return False
         except httpx.HTTPStatusError as e:
             if e.response.status_code == 404:
                 return False
@@ -597,7 +607,7 @@ class KubernetesMultusCharmLib:
         cap_net_admin: bool = False,
         privileged: bool = False,
     ):
-        """Constructor for the KubernetesMultusCharmLib.
+        """Create instance of the KubernetesMultusCharmLib.
 
         Args:
             network_attachment_definitions: list of `NetworkAttachmentDefinition` to be created.
@@ -620,7 +630,7 @@ class KubernetesMultusCharmLib:
         self.privileged = privileged
 
     def configure(self) -> None:
-        """Creates network attachment definitions and patches statefulset."""
+        """Create network attachment definitions and patches statefulset."""
         self._configure_network_attachment_definitions()
         if not self._statefulset_is_patched():
             self.kubernetes.patch_statefulset(
@@ -634,7 +644,7 @@ class KubernetesMultusCharmLib:
     def _network_attachment_definition_created_by_charm(
         self, network_attachment_definition: NetworkAttachmentDefinition
     ) -> bool:
-        """Returns whether a given NetworkAttachmentDefinitions was created by this charm."""
+        """Return whether a given NetworkAttachmentDefinitions was created by this charm."""
         labels = network_attachment_definition.metadata.labels  # type: ignore[reportOptionalMemberAccess]
         if not labels:
             return False
@@ -645,7 +655,7 @@ class KubernetesMultusCharmLib:
         return True
 
     def _configure_network_attachment_definitions(self):
-        """Configures NetworkAttachmentDefinitions in Kubernetes.
+        """Configure NetworkAttachmentDefinitions in Kubernetes.
 
         1. Goes through the list of existing NetworkAttachmentDefinitions in Kubernetes.
         - If it was created by this charm:
@@ -695,7 +705,7 @@ class KubernetesMultusCharmLib:
             self.delete_pod()
 
     def _network_attachment_definitions_are_created(self) -> bool:
-        """Returns whether all network attachment definitions are created."""
+        """Return whether all network attachment definitions are created."""
         for network_attachment_definition in self.network_attachment_definitions:
             if not self.kubernetes.network_attachment_definition_is_created(
                 network_attachment_definition=network_attachment_definition
@@ -704,7 +714,7 @@ class KubernetesMultusCharmLib:
         return True
 
     def _statefulset_is_patched(self) -> bool:
-        """Returns whether statefuset is patched with network annotations and capabilities."""
+        """Return whether statefuset is patched with network annotations and capabilities."""
         return self.kubernetes.statefulset_is_patched(
             name=self.statefulset_name,
             network_annotations=self.network_annotations,
@@ -714,7 +724,7 @@ class KubernetesMultusCharmLib:
         )
 
     def _pod_is_ready(self) -> bool:
-        """Returns whether pod is ready with network annotations and capabilities."""
+        """Return whether pod is ready with network annotations and capabilities."""
         return self.kubernetes.pod_is_ready(
             pod_name=self.pod_name,
             network_annotations=self.network_annotations,
@@ -724,7 +734,7 @@ class KubernetesMultusCharmLib:
         )
 
     def is_ready(self) -> bool:
-        """Returns whether Multus is ready.
+        """Return whether Multus is ready.
 
         Validates that the network attachment definitions are created, that the statefulset is
         patched with the appropriate Multus annotations and capabilities and that the pod
@@ -739,7 +749,7 @@ class KubernetesMultusCharmLib:
         return nad_are_created and satefulset_is_patched and pod_is_ready
 
     def remove(self) -> None:
-        """Deletes network attachment definitions and removes patch."""
+        """Delete network attachment definitions and removes patch."""
         self.kubernetes.unpatch_statefulset(
             name=self.statefulset_name,
             container_name=self.container_name,
