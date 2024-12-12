@@ -72,7 +72,6 @@ class GNBSIMOperatorCharm(CharmBase):
         self.framework.observe(self.on.start_simulation_action, self._on_start_simulation_action)
         self.framework.observe(self.on.fiveg_n2_relation_joined, self._configure)
         self.framework.observe(self._n2_requirer.on.n2_information_available, self._configure)
-        self.framework.observe(self.on[CORE_GNB_RELATION_NAME].relation_created, self._configure)
         self.framework.observe(self.on[CORE_GNB_RELATION_NAME].relation_changed, self._configure)
         self.framework.observe(self.on.remove, self._on_remove)
 
