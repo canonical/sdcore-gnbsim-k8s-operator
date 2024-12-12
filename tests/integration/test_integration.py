@@ -5,7 +5,6 @@
 
 import json
 import logging
-import textwrap
 from pathlib import Path
 
 import pytest
@@ -17,6 +16,8 @@ logger = logging.getLogger(__name__)
 
 METADATA = yaml.safe_load(Path("./charmcraft.yaml").read_text())
 APP_NAME = METADATA["name"]
+FIVEG_CORE_GNB_MOCK_PATH = "./tests/integration/fiveg_core_gnb_mock_charm.py"
+FIVEG_N2_MOCK_PATH = "./tests/integration/fiveg_n2_mock_charm.py"
 AMF_MOCK = "amf-mock"
 NMS_MOCK = "nms-mock"
 GRAFANA_AGENT_CHARM_NAME = "grafana-agent-k8s"
@@ -85,39 +86,27 @@ async def test_restore_amf_and_wait_for_active_status(ops_test: OpsTest, deploy)
     await ops_test.model.wait_for_idle(apps=[APP_NAME], status="active", timeout=TIMEOUT)
 
 
+@pytest.mark.abort_on_fail
+async def test_remove_nms_and_wait_for_blocked_status(ops_test: OpsTest, deploy):
+    assert ops_test.model
+    await ops_test.model.remove_application(NMS_MOCK, block_until_done=True)
+    await ops_test.model.wait_for_idle(apps=[APP_NAME], status="blocked", timeout=TIMEOUT)
+
+
+@pytest.mark.abort_on_fail
+async def test_restore_nms_and_wait_for_active_status(ops_test: OpsTest, deploy):
+    assert ops_test.model
+    await _deploy_nms_mock(ops_test)
+    await ops_test.model.integrate(relation1=f"{APP_NAME}:fiveg_core_gnb", relation2=NMS_MOCK)
+    await ops_test.model.wait_for_idle(apps=[APP_NAME], status="active", timeout=TIMEOUT)
+
+
 async def _deploy_amf_mock(ops_test: OpsTest):
     fiveg_n2_lib_url = "https://github.com/canonical/sdcore-amf-k8s-operator/raw/main/lib/charms/sdcore_amf_k8s/v0/fiveg_n2.py"
     fiveg_n2_lib = requests.get(fiveg_n2_lib_url, timeout=10).text
     any_charm_src_overwrite = {
         "fiveg_n2.py": fiveg_n2_lib,
-        "any_charm.py": textwrap.dedent(
-            """\
-        from fiveg_n2 import N2Provides
-        from any_charm_base import AnyCharmBase
-        from ops.framework import EventBase
-        N2_RELATION_NAME = "provide-fiveg-n2"
-
-        class AnyCharm(AnyCharmBase):
-            def __init__(self, *args, **kwargs):
-                super().__init__(*args, **kwargs)
-                self.n2_provider = N2Provides(self, N2_RELATION_NAME)
-                self.framework.observe(
-                    self.on[N2_RELATION_NAME].relation_changed,
-                    self.fiveg_n2_relation_changed,
-                )
-
-            def fiveg_n2_relation_changed(self, event: EventBase) -> None:
-                fiveg_n2_relations = self.model.relations.get(N2_RELATION_NAME)
-                if not fiveg_n2_relations:
-                    logger.info("No %s relations found.", N2_RELATION_NAME)
-                    return
-                self.n2_provider.set_n2_information(
-                    amf_ip_address="1.2.3.4",
-                    amf_hostname="amf-external.sdcore.svc.cluster.local",
-                    amf_port=38412,
-                )
-        """
-        ),
+        "any_charm.py": Path(FIVEG_N2_MOCK_PATH).read_text(),
     }
     assert ops_test.model
     await ops_test.model.deploy(
@@ -145,35 +134,7 @@ async def _deploy_nms_mock(ops_test: OpsTest):
     fiveg_core_gnb_lib = requests.get(fiveg_core_gnb_lib_url, timeout=10).text
     any_charm_src_overwrite = {
         "fiveg_core_gnb.py": fiveg_core_gnb_lib,
-        "any_charm.py": textwrap.dedent(
-            """\
-        from fiveg_core_gnb import FivegCoreGnbProvides, PLMNConfig
-        from any_charm_base import AnyCharmBase
-        from ops.framework import EventBase
-        CORE_GNB_RELATION_NAME = "provide-fiveg-core-gnb"
-
-        class AnyCharm(AnyCharmBase):
-            def __init__(self, *args, **kwargs):
-                super().__init__(*args, **kwargs)
-                self._fiveg_core_gnb_provider = FivegCoreGnbProvides(self, CORE_GNB_RELATION_NAME)
-                self.framework.observe(
-                    self.on[CORE_GNB_RELATION_NAME].relation_changed,
-                    self.fiveg_core_gnb_relation_changed,
-                )
-
-            def fiveg_core_gnb_relation_changed(self, event: EventBase):
-                core_gnb_relations = self.model.relations.get(CORE_GNB_RELATION_NAME)
-                if not core_gnb_relations:
-                    logger.info("No %s relations found.", CORE_GNB_RELATION_NAME)
-                    return
-                for relation in core_gnb_relations:
-                    self._fiveg_core_gnb_provider.publish_gnb_config_information(
-                        relation_id=relation.id,
-                        tac=1,
-                        plmns=[PLMNConfig(mcc="001", mnc="01", sst=1, sd=1056816)],
-                    )
-        """
-        ),
+        "any_charm.py": Path(FIVEG_CORE_GNB_MOCK_PATH).read_text(),
     }
     assert ops_test.model
     await ops_test.model.deploy(
