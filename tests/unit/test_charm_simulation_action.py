@@ -48,7 +48,7 @@ class TestCharmStartSimulationAction(GNBSUMUnitTestFixtures):
 
             assert exc_info.value.message == "Config file is not written"
 
-    def test_given_less_than_5_profiles_passed_when_start_simulation_then_action_returns_with_success_false(  # noqa: E501
+    def test_given_less_than_4_profiles_passed_no_error_when_start_simulation_then_action_returns_with_success_false(  # noqa: E501
         self,
     ):
         with tempfile.TemporaryDirectory() as temp_dir:
@@ -65,7 +65,7 @@ class TestCharmStartSimulationAction(GNBSUMUnitTestFixtures):
                     testing.Exec(
                         command_prefix=["/bin/gnbsim", "--cfg", "/etc/gnbsim/gnb.conf"],
                         return_code=0,
-                        stderr="Profile Status: PASS\nProfile Status: PASS\nProfile Status: FAILED\nProfile Status: PASS\nProfile Status: PASS\n",  # noqa: E501
+                        stdout="Profile Status: PASS\nProfile Status: PASS\nProfile Status: FAILED\nProfile Status: PASS\nProfile Status: PASS\n",  # noqa: E501
                     )
                 },
             )
@@ -86,6 +86,44 @@ class TestCharmStartSimulationAction(GNBSUMUnitTestFixtures):
             assert self.ctx.action_results["success"] == "false"
             assert self.ctx.action_results["info"] == "4/5 profiles passed"
 
+    def test_given_1_profile_passed_and_error_occured_when_start_simulation_then_action_returns_with_error_message(  # noqa: E501
+        self,
+    ):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            container = testing.Container(
+                name="gnbsim",
+                can_connect=True,
+                mounts={
+                    "config": testing.Mount(
+                        location="/etc/gnbsim",
+                        source=temp_dir,
+                    )
+                },
+                execs={
+                    testing.Exec(
+                        command_prefix=["/bin/gnbsim", "--cfg", "/etc/gnbsim/gnb.conf"],
+                        return_code=0,
+                        stdout="Profile Status: PASS\n",
+                        stderr="Unknown Profile type"
+                    )
+                },
+            )
+            state_in = testing.State(
+                leader=True,
+                containers={container},
+            )
+
+            with open("tests/unit/expected_config.yaml", "r") as f:
+                config_file = f.read()
+
+            with open(f"{temp_dir}/gnb.conf", "w") as f:
+                f.write(config_file)
+
+            with pytest.raises(ActionFailed) as exc_info:
+                self.ctx.run(self.ctx.on.action("start-simulation"), state_in)
+
+            assert exc_info.value.message == "Execution failed with: Unknown Profile type"
+
     def test_given_5_profiles_passed_when_start_simulation_then_action_returns_with_success(
         self,
     ):
@@ -103,7 +141,7 @@ class TestCharmStartSimulationAction(GNBSUMUnitTestFixtures):
                     testing.Exec(
                         command_prefix=["/bin/gnbsim", "--cfg", "/etc/gnbsim/gnb.conf"],
                         return_code=0,
-                        stderr="Profile Status: PASS\nProfile Status: PASS\nProfile Status: PASS\nProfile Status: PASS\nProfile Status: PASS\n",  # noqa: E501
+                        stdout="Profile Status: PASS\nProfile Status: PASS\nProfile Status: PASS\nProfile Status: PASS\nProfile Status: PASS\n",  # noqa: E501
                     )
                 },
             )
