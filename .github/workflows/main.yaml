@@ -4,11 +4,9 @@ on:
   pull_request:
     branches:
       - main
-      - v**
   push:
     branches:
       - main
-      - v**
   schedule:
     - cron: '20 6 * * 0'
 
