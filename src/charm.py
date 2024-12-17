@@ -196,15 +196,19 @@ class GNBSIMOperatorCharm(CharmBase):
             event.fail(message="Config file is not written")
             return
         try:
-            _, stderr = self._exec_command_in_workload(
+            stdout, stderr = self._exec_command_in_workload(
                 command=f"/bin/gnbsim --cfg {BASE_CONFIG_PATH}/{CONFIG_FILE_NAME}",
             )
-            if not stderr:
+            if stderr:
+                event.fail(message=f"Execution failed with: {str(stderr)}")
+                return
+
+            if not stdout:
                 event.fail(message="No output in simulation")
                 return
-            logger.info("gnbsim simulation output:\n=====\n%s\n=====", stderr)
 
-            count = stderr.count("Profile Status: PASS")
+            logger.info("gnbsim simulation output:\n=====\n%s\n=====", stdout)
+            count = stdout.count("Profile Status: PASS")
             info = f"{count}/{NUM_PROFILES} profiles passed"
             if count == NUM_PROFILES:
                 event.set_results({"success": "true", "info": info})

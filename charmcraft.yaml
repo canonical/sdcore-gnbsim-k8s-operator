@@ -23,7 +23,6 @@ resources:
     type: oci-image
     description: OCI image for 5G gnbsim
     upstream-source: ghcr.io/canonical/sdcore-gnbsim:1.5.0
-
 storage:
   config:
     type: filesystem
