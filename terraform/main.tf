@@ -9,6 +9,7 @@ resource "juju_application" "gnbsim" {
     name     = "sdcore-gnbsim-k8s"
     channel  = var.channel
     revision = var.revision
+    base     = var.base
   }
 
   config      = var.config
