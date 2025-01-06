@@ -81,7 +81,7 @@ config:
     imsi:
       type: string
       default: "001010100007487"
-      description: International Mobile Subscriber Identity
+      description: International Mobile Subscriber Identity. If the subscriber count is greater than 1, the imsi will be incremented by 1 for each subscriber.
     usim-key:
       type: string
       default: "5122250214c33e723a5dd523fc145fc0"
@@ -106,7 +106,16 @@ config:
       type: string
       default: "internet"
       description: Data Network Name
+    subscriber-count:
+      type: int
+      default: 1
+      description: Number of subscribers to simulate
 
 actions:
   start-simulation:
     description: Starts gNB simulation
+    params:
+      timeout:
+        type: int
+        description: Time to wait for the simulation to complete (in seconds). The more subscribers, the longer the simulation will take.
+        default: 300
