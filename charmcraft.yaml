@@ -107,7 +107,7 @@ config:
       default: "internet"
       description: Data Network Name
     subscriber-count:
-      type: int
+      type: integer
       default: 1
       description: Number of subscribers to simulate
 
@@ -116,6 +116,6 @@ actions:
     description: Starts gNB simulation
     params:
       timeout:
-        type: int
+        type: integer
         description: Time to wait for the simulation to complete (in seconds). The more subscribers, the longer the simulation will take.
         default: 300
