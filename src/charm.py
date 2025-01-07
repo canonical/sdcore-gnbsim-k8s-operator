@@ -171,6 +171,8 @@ class GNBSIMOperatorCharm(CharmBase):
             return
         if not self._is_sd_present_in_plmn(plmns[0]):
             return
+        if not (ue_count := self._get_subscriber_count_from_config()):
+            return
         content = self._render_config_file(
             amf_hostname=self._n2_requirer.amf_hostname,
             amf_port=self._n2_requirer.amf_port,
@@ -183,6 +185,7 @@ class GNBSIMOperatorCharm(CharmBase):
             usim_opc=usim_opc,
             usim_key=usim_key,
             dnn=dnn,
+            ue_count=ue_count,
         )
         self._write_config_file(content=content)
         self._create_upf_route()
@@ -198,9 +201,11 @@ class GNBSIMOperatorCharm(CharmBase):
         if not self._config_file_is_written():
             event.fail(message="Config file is not written")
             return
+        timeout = event.params.get("timeout", 300)
         try:
             stdout, stderr = self._exec_command_in_workload(
                 command=f"/bin/gnbsim --cfg {BASE_CONFIG_PATH}/{CONFIG_FILE_NAME}",
+                timeout=timeout,
             )
             if stderr:
                 event.fail(message=f"Execution failed with: {str(stderr)}")
@@ -304,6 +309,9 @@ class GNBSIMOperatorCharm(CharmBase):
     def _get_dnn_from_config(self) -> Optional[str]:
         return cast(Optional[str], self.model.config.get("dnn"))
 
+    def _get_subscriber_count_from_config(self) -> Optional[int]:
+        return cast(Optional[int], self.model.config.get("subscriber-count"))
+
     def _get_workload_version(self) -> str:
         """Return the workload version.
 
@@ -343,6 +351,7 @@ class GNBSIMOperatorCharm(CharmBase):
         usim_opc: str,
         usim_sequence_number: str,
         dnn: str,
+        ue_count: int,
     ) -> str:
         """Render config file based on parameters.
 
@@ -358,6 +367,7 @@ class GNBSIMOperatorCharm(CharmBase):
             usim_opc: USIM OPC
             usim_sequence_number: USIM sequence number
             dnn: Data Network Name
+            ue_count: Number of subscribers
 
         Returns:
             str: Rendered gnbsim configuration file
@@ -379,6 +389,7 @@ class GNBSIMOperatorCharm(CharmBase):
             usim_opc=usim_opc,
             usim_sequence_number=usim_sequence_number,
             dnn=dnn,
+            ue_count=ue_count,
         )
 
     def _get_invalid_configs(self) -> list[str]:  # noqa: C901
@@ -412,15 +423,17 @@ class GNBSIMOperatorCharm(CharmBase):
     def _exec_command_in_workload(
         self,
         command: str,
+        timeout: int = 300,
     ) -> Tuple[Optional[str], Optional[str]]:
         """Execute command in workload container.
 
         Args:
             command: Command to execute
+            timeout: Timeout in seconds
         """
         process = self._container.exec(
             command=command.split(),
-            timeout=300,
+            timeout=timeout,
         )
         return process.wait_output()
 

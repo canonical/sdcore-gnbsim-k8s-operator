@@ -36,7 +36,7 @@ configuration:
     enable: true
     gnbName: gnb1
     startImsi: {{ imsi }}
-    ueCount: 1
+    ueCount: {{ ue_count }}
     defaultAs: {{ icmp_packet_destination }}
     opc: {{ usim_opc }}
     key: {{ usim_key }}
@@ -68,13 +68,13 @@ configuration:
       mnc: {{ mnc }}
     sequenceNumber: {{ usim_sequence_number }}
     startImsi: {{ imsi }}
-    ueCount: 1
+    ueCount: {{ ue_count }}
   - profileType: anrelease
     profileName: profile3
     enable: true
     gnbName: gnb1
     startImsi: {{ imsi }}
-    ueCount: 1
+    ueCount: {{ ue_count }}
     defaultAs: {{ icmp_packet_destination }}
     opc: {{ usim_opc }}
     key: {{ usim_key }}
@@ -92,7 +92,7 @@ configuration:
     enable: true
     gnbName: gnb1
     startImsi: {{ imsi }}
-    ueCount: 1
+    ueCount: {{ ue_count }}
     defaultAs: {{ icmp_packet_destination }}
     opc: {{ usim_opc }}
     key: {{ usim_key }}
@@ -111,7 +111,7 @@ configuration:
     enable: true
     gnbName: gnb1
     startImsi: {{ imsi }}
-    ueCount: 1
+    ueCount: {{ ue_count }}
     defaultAs: {{ icmp_packet_destination }}
     opc: {{ usim_opc }}
     key: {{ usim_key }}
