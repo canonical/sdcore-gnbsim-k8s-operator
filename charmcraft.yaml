@@ -107,7 +107,7 @@ config:
       default: "internet"
       description: Data Network Name
     subscriber-count:
-      type: integer
+      type: int
       default: 1
       description: Number of subscribers to simulate
 
