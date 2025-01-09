@@ -18,9 +18,7 @@ from charms.observability_libs.v1.kubernetes_service_patch import (
     KubernetesServicePatch,
 )
 from charms.sdcore_amf_k8s.v0.fiveg_n2 import N2Requires
-from charms.sdcore_gnbsim_k8s.v0.fiveg_gnb_identity import (
-    GnbIdentityProvides,
-)
+from charms.sdcore_nms_k8s.v0.fiveg_core_gnb import FivegCoreGnbRequires, PLMNConfig
 from jinja2 import Environment, FileSystemLoader
 from lightkube.models.core_v1 import ServicePort
 from lightkube.models.meta_v1 import ObjectMeta
@@ -36,7 +34,7 @@ CONFIG_FILE_NAME = "gnb.conf"
 GNB_INTERFACE_NAME = "gnb"
 GNB_NETWORK_ATTACHMENT_DEFINITION_NAME = "gnb-net"
 N2_RELATION_NAME = "fiveg-n2"
-GNB_IDENTITY_RELATION_NAME = "fiveg_gnb_identity"
+CORE_GNB_RELATION_NAME = "fiveg_core_gnb"
 LOGGING_RELATION_NAME = "logging"
 WORKLOAD_VERSION_FILE_NAME = "/etc/workload-version"
 NUM_PROFILES = 5
@@ -65,7 +63,7 @@ class GNBSIMOperatorCharm(CharmBase):
             network_annotations=self._generate_network_annotations(),
             network_attachment_definitions=self._network_attachment_definitions_from_config(),
         )
-        self._gnb_identity_provider = GnbIdentityProvides(self, GNB_IDENTITY_RELATION_NAME)
+        self._core_gnb_requirer = FivegCoreGnbRequires(self, CORE_GNB_RELATION_NAME)
         self._logging = LogForwarder(charm=self, relation_name=LOGGING_RELATION_NAME)
         self.framework.observe(self.on.collect_unit_status, self._on_collect_unit_status)
         self.framework.observe(self.on.update_status, self._configure)
@@ -74,13 +72,10 @@ class GNBSIMOperatorCharm(CharmBase):
         self.framework.observe(self.on.start_simulation_action, self._on_start_simulation_action)
         self.framework.observe(self.on.fiveg_n2_relation_joined, self._configure)
         self.framework.observe(self._n2_requirer.on.n2_information_available, self._configure)
-        self.framework.observe(
-            self._gnb_identity_provider.on.fiveg_gnb_identity_request,
-            self._configure,
-        )
+        self.framework.observe(self.on[CORE_GNB_RELATION_NAME].relation_changed, self._configure)
         self.framework.observe(self.on.remove, self._on_remove)
 
-    def _on_collect_unit_status(self, event: CollectStatusEvent):
+    def _on_collect_unit_status(self, event: CollectStatusEvent):  # noqa: C901
         """Check the unit status and set to Unit when CollectStatusEvent is fired.
 
         Set the workload version if present in workload
@@ -94,6 +89,10 @@ class GNBSIMOperatorCharm(CharmBase):
         if not self._relation_created(N2_RELATION_NAME):
             event.add_status(BlockedStatus("Waiting for N2 relation to be created"))
             logger.info("Waiting for N2 relation to be created")
+            return
+        if not self._relation_created(CORE_GNB_RELATION_NAME):
+            event.add_status(BlockedStatus("Waiting for fiveg_core_gnb relation to be created"))
+            logger.info("Waiting for fiveg_core_gnb relation to be created")
             return
         if not self._container.can_connect():
             event.add_status(WaitingStatus("Waiting for container to be ready"))
@@ -116,6 +115,12 @@ class GNBSIMOperatorCharm(CharmBase):
             event.add_status(WaitingStatus("Waiting for N2 information"))
             logger.info("Waiting for N2 information")
             return
+        if not self._core_gnb_requirer.tac or not (plmns := self._core_gnb_requirer.plmns):
+            event.add_status(WaitingStatus("Waiting for TAC and PLMNs configuration"))
+            return
+        if not self._is_sd_present_in_plmn(plmns[0]):
+            event.add_status(BlockedStatus("Invalid configuration: SD is missing from PLMN"))
+            return
         event.add_status(ActiveStatus())
 
     def _configure(self, event: EventBase) -> None:  # noqa: C901
@@ -133,12 +138,15 @@ class GNBSIMOperatorCharm(CharmBase):
         self._kubernetes_multus.configure()
         if not self._relation_created(N2_RELATION_NAME):
             return
+        if not self._relation_created(CORE_GNB_RELATION_NAME):
+            return
         if not self._container.can_connect():
             return
         if not self._container.exists(path=BASE_CONFIG_PATH):
             return
         if not self._kubernetes_multus.is_ready():
             return
+        self._update_fiveg_core_gnb_relation_data()
         if not self._n2_requirer.amf_hostname or not self._n2_requirer.amf_port:
             return
         if not self._n2_requirer.amf_hostname:
@@ -149,17 +157,7 @@ class GNBSIMOperatorCharm(CharmBase):
             return
         if not (imsi := self._get_imsi_from_config()):
             return
-        if not (mcc := self._get_mcc_from_config()):
-            return
-        if not (mnc := self._get_mnc_from_config()):
-            return
-        if not (sd := self._get_sd_from_config()):
-            return
         if not (usim_sequence_number := self._get_usim_sequence_number_from_config()):
-            return
-        if not (sst := self._get_sst_from_config()):
-            return
-        if not (tac := self._get_tac_from_config()):
             return
         if not (usim_opc := self._get_usim_opc_from_config()):
             return
@@ -167,25 +165,33 @@ class GNBSIMOperatorCharm(CharmBase):
             return
         if not (dnn := self._get_dnn_from_config()):
             return
+        if not (tac := self._core_gnb_requirer.tac):
+            return
+        if not (plmns := self._core_gnb_requirer.plmns):
+            return
+        if not self._is_sd_present_in_plmn(plmns[0]):
+            return
+        if not (ue_count := self._get_subscriber_count_from_config()):
+            return
         content = self._render_config_file(
             amf_hostname=self._n2_requirer.amf_hostname,
             amf_port=self._n2_requirer.amf_port,
             gnb_ip_address=gnb_ip_address.split("/")[0],
             icmp_packet_destination=icmp_packet_destination,
             imsi=imsi,
-            mcc=mcc,
-            mnc=mnc,
-            sd=sd,
             usim_sequence_number=usim_sequence_number,
-            sst=sst,
+            plmn=plmns[0],
             tac=tac,
             usim_opc=usim_opc,
             usim_key=usim_key,
             dnn=dnn,
+            ue_count=ue_count,
         )
         self._write_config_file(content=content)
-        self._update_fiveg_gnb_identity_relation_data()
         self._create_upf_route()
+
+    def _is_sd_present_in_plmn(self, plmn) -> bool:
+        return plmn.sd is not None
 
     def _on_start_simulation_action(self, event: ActionEvent) -> None:
         """Run gnbsim simulation leveraging configuration file."""
@@ -195,9 +201,11 @@ class GNBSIMOperatorCharm(CharmBase):
         if not self._config_file_is_written():
             event.fail(message="Config file is not written")
             return
+        timeout = event.params.get("timeout", 300)
         try:
             stdout, stderr = self._exec_command_in_workload(
                 command=f"/bin/gnbsim --cfg {BASE_CONFIG_PATH}/{CONFIG_FILE_NAME}",
+                timeout=timeout,
             )
             if stderr:
                 event.fail(message=f"Execution failed with: {str(stderr)}")
@@ -262,25 +270,14 @@ class GNBSIMOperatorCharm(CharmBase):
             ),
         ]
 
-    def _update_fiveg_gnb_identity_relation_data(self) -> None:
-        """Publish GNB name and TAC in the `fiveg_gnb_identity` relation data bag."""
+    def _update_fiveg_core_gnb_relation_data(self) -> None:
+        """Publish gNB name `fiveg_core_gnb` relation data bag."""
         if not self.unit.is_leader():
             return
-        fiveg_gnb_identity_relations = self.model.relations.get(GNB_IDENTITY_RELATION_NAME)
-        if not fiveg_gnb_identity_relations:
-            logger.info("No %s relations found.", GNB_IDENTITY_RELATION_NAME)
-            return
+        if not self._relation_created(CORE_GNB_RELATION_NAME):
+            logger.info("No %s relations found.", CORE_GNB_RELATION_NAME)
 
-        tac = self._get_tac_as_int()
-        if not tac:
-            logger.error(
-                "TAC value cannot be published on the %s relation", GNB_IDENTITY_RELATION_NAME
-            )
-            return
-        for gnb_identity_relation in fiveg_gnb_identity_relations:
-            self._gnb_identity_provider.publish_gnb_identity_information(
-                relation_id=gnb_identity_relation.id, gnb_name=self._gnb_name, tac=tac
-            )
+        self._core_gnb_requirer.publish_gnb_information(gnb_name=self._gnb_name)
 
     def _get_gnb_ip_address_from_config(self) -> Optional[str]:
         return cast(Optional[str], self.model.config.get("gnb-ip-address"))
@@ -293,21 +290,6 @@ class GNBSIMOperatorCharm(CharmBase):
 
     def _get_imsi_from_config(self) -> Optional[str]:
         return cast(Optional[str], self.model.config.get("imsi"))
-
-    def _get_mcc_from_config(self) -> Optional[str]:
-        return cast(Optional[str], self.model.config.get("mcc"))
-
-    def _get_mnc_from_config(self) -> Optional[str]:
-        return cast(Optional[str], self.model.config.get("mnc"))
-
-    def _get_sd_from_config(self) -> Optional[str]:
-        return cast(Optional[str], self.model.config.get("sd"))
-
-    def _get_sst_from_config(self) -> Optional[int]:
-        return cast(Optional[int], self.model.config.get("sst"))
-
-    def _get_tac_from_config(self) -> Optional[str]:
-        return cast(Optional[str], self.model.config.get("tac"))
 
     def _get_upf_gateway_from_config(self) -> Optional[str]:
         return cast(Optional[str], self.model.config.get("upf-gateway"))
@@ -326,6 +308,9 @@ class GNBSIMOperatorCharm(CharmBase):
 
     def _get_dnn_from_config(self) -> Optional[str]:
         return cast(Optional[str], self.model.config.get("dnn"))
+
+    def _get_subscriber_count_from_config(self) -> Optional[int]:
+        return cast(Optional[int], self.model.config.get("subscriber-count"))
 
     def _get_workload_version(self) -> str:
         """Return the workload version.
@@ -350,9 +335,7 @@ class GNBSIMOperatorCharm(CharmBase):
         logger.info("Config file written")
 
     def _config_file_is_written(self) -> bool:
-        if not self._container.exists(f"{BASE_CONFIG_PATH}/{CONFIG_FILE_NAME}"):
-            return False
-        return True
+        return self._container.exists(f"{BASE_CONFIG_PATH}/{CONFIG_FILE_NAME}")
 
     def _render_config_file(
         self,
@@ -362,15 +345,13 @@ class GNBSIMOperatorCharm(CharmBase):
         gnb_ip_address: str,
         icmp_packet_destination: str,
         imsi: str,
-        mcc: str,
-        mnc: str,
-        sd: str,
-        sst: int,
-        tac: str,
+        plmn: PLMNConfig,
+        tac: int,
         usim_key: str,
         usim_opc: str,
         usim_sequence_number: str,
         dnn: str,
+        ue_count: int,
     ) -> str:
         """Render config file based on parameters.
 
@@ -380,15 +361,13 @@ class GNBSIMOperatorCharm(CharmBase):
             gnb_ip_address: gNodeB IP address
             icmp_packet_destination: Default ICMP packet destination
             imsi: International Mobile Subscriber Identity
-            mcc: Mobile Country Code
-            mnc: Mobile Network Code
-            sd: Slice ID
-            sst: Slice Selection Type
+            plmn: PLMN configuration
             tac: Tracking Area Code
             usim_key: USIM key
             usim_opc: USIM OPC
             usim_sequence_number: USIM sequence number
             dnn: Data Network Name
+            ue_count: Number of subscribers
 
         Returns:
             str: Rendered gnbsim configuration file
@@ -401,15 +380,16 @@ class GNBSIMOperatorCharm(CharmBase):
             gnb_ip_address=gnb_ip_address,
             icmp_packet_destination=icmp_packet_destination,
             imsi=imsi,
-            mcc=mcc,
-            mnc=mnc,
-            sd=sd,
-            sst=sst,
-            tac=tac,
+            mcc=plmn.mcc,
+            mnc=plmn.mnc,
+            sd=format(plmn.sd, '06X'),
+            sst=plmn.sst,
+            tac=format(tac, '06X'),
             usim_key=usim_key,
             usim_opc=usim_opc,
             usim_sequence_number=usim_sequence_number,
             dnn=dnn,
+            ue_count=ue_count,
         )
 
     def _get_invalid_configs(self) -> list[str]:  # noqa: C901
@@ -421,16 +401,6 @@ class GNBSIMOperatorCharm(CharmBase):
             invalid_configs.append("icmp-packet-destination")
         if not self._get_imsi_from_config():
             invalid_configs.append("imsi")
-        if not self._get_mcc_from_config():
-            invalid_configs.append("mcc")
-        if not self._get_mnc_from_config():
-            invalid_configs.append("mnc")
-        if not self._get_sd_from_config():
-            invalid_configs.append("sd")
-        if not self._get_sst_from_config():
-            invalid_configs.append("sst")
-        if not self._get_tac_from_config() or not self._get_tac_as_int():
-            invalid_configs.append("tac")
         if not self._get_upf_gateway_from_config():
             invalid_configs.append("upf-gateway")
         if not self._get_upf_subnet_from_config():
@@ -453,15 +423,17 @@ class GNBSIMOperatorCharm(CharmBase):
     def _exec_command_in_workload(
         self,
         command: str,
+        timeout: int = 300,
     ) -> Tuple[Optional[str], Optional[str]]:
         """Execute command in workload container.
 
         Args:
             command: Command to execute
+            timeout: Timeout in seconds
         """
         process = self._container.exec(
             command=command.split(),
-            timeout=300,
+            timeout=timeout,
         )
         return process.wait_output()
 
@@ -484,19 +456,6 @@ class GNBSIMOperatorCharm(CharmBase):
             str: the gNB's name.
         """
         return f"{self.model.name}-gnbsim-{self.app.name}"
-
-    def _get_tac_as_int(self) -> Optional[int]:
-        """Convert the TAC value in the config to an integer.
-
-        Returns:
-            TAC as an integer. None if the config value is invalid.
-        """
-        tac = None
-        try:
-            tac = int(self.model.config.get("tac"), 16)  # type: ignore[arg-type]
-        except ValueError:
-            logger.error("Invalid TAC value in config: it cannot be converted to integer.")
-        return tac
 
 
 if __name__ == "__main__":  # pragma: nocover
