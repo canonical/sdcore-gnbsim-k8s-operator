@@ -59,7 +59,7 @@ configuration:
     key: 5122250214c33e723a5dd523fc145fc0
     opc: 981d464c7c52eb6e5036234984ad0bcf
     perUserTimeout: 100
-    dnn: "internet"
+    dnn: internet
     sNssai:
       sst: 1
       sd: "102030"

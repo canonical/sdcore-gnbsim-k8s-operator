@@ -6,11 +6,11 @@ A Charmed Operator for SD-Core's gNodeB simulator (GNBSIM) component for K8s.
 ## Usage
 
 ```bash
-juju deploy sdcore-gnbsim-k8s --trust --channel=1.5/edge
+juju deploy sdcore-gnbsim-k8s --trust --channel=1.5/stable
 juju run sdcore-gnbsim-k8s/leader start-simulation
 ```
 
 ## Image
 
-- **gnbsim**: `ghcr.io/canonical/sdcore-gnbsim:1.5.0`
+- **gnbsim**: `ghcr.io/canonical/sdcore-gnbsim:1.6.0`
 
