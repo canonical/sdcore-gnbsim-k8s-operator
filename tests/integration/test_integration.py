@@ -115,7 +115,7 @@ async def _deploy_amf_mock(ops_test: OpsTest):
         channel="beta",
         config={
             "src-overwrite": json.dumps(any_charm_src_overwrite),
-            "python-packages": "pytest-interface-tester"
+            "python-packages": "ops==2.17.1\npytest-interface-tester"
         },
     )
 
@@ -143,6 +143,6 @@ async def _deploy_nms_mock(ops_test: OpsTest):
         channel="beta",
         config={
             "src-overwrite": json.dumps(any_charm_src_overwrite),
-            "python-packages": "pytest-interface-tester"
+            "python-packages": "ops==2.17.0\npytest-interface-tester"
         },
     )
