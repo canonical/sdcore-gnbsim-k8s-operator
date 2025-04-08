@@ -268,7 +268,6 @@ class TestCharmCollectUnitStatus(GNBSUMUnitTestFixtures):
         core_gnb_relation = testing.Relation(
             endpoint="fiveg_core_gnb",
             interface="fiveg_core_gnb",
-            # local_app_data={"gnb-name": "gnbsim"},
         )
         container = testing.Container(
             name="gnbsim",
