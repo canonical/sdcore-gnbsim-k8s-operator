@@ -287,7 +287,7 @@ class TestCharmCollectUnitStatus(GNBSUMUnitTestFixtures):
         state_out = self.ctx.run(self.ctx.on.collect_unit_status(), state_in)
 
         assert state_out.unit_status == BlockedStatus(
-                "Invalid configuration: gNB name needs to match the following regular expression: ^[a-zA-Z][a-zA-Z0-9-_]{1,255}$"  # noqa E501
+                "Invalid configuration: gNB name is missing from the relation"
             )
 
     def test_pre_requisites_met_when_collect_unit_status_then_status_is_active(self):

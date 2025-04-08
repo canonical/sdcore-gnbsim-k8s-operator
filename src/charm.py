@@ -124,7 +124,7 @@ class GNBSIMOperatorCharm(CharmBase):
         if not self._is_gnb_name_published():
             event.add_status(
                 BlockedStatus(
-                    "Invalid configuration: gNB name needs to match the following regular expression: ^[a-zA-Z][a-zA-Z0-9-_]{1,255}$"  # noqa: E501
+                    "Invalid configuration: gNB name is missing from the relation"
                 )
             )
             return
@@ -293,7 +293,10 @@ class GNBSIMOperatorCharm(CharmBase):
         if not self._relation_created(CORE_GNB_RELATION_NAME):
             logger.info("No %s relations found.", CORE_GNB_RELATION_NAME)
 
-        self._core_gnb_requirer.publish_gnb_information(gnb_name=self._gnb_name)
+        try:
+            self._core_gnb_requirer.publish_gnb_information(gnb_name=self._gnb_name)
+        except ValueError:
+            return
 
     def _get_gnb_ip_address_from_config(self) -> Optional[str]:
         return cast(Optional[str], self.model.config.get("gnb-ip-address"))
