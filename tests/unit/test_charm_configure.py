@@ -23,7 +23,9 @@ class TestCharmConfigure(GNBSUMUnitTestFixtures):
             plmns = [PLMNConfig(mcc="001", mnc="01", sst=1, sd=1056816)]
             self.mock_gnb_core_remote_plmns.return_value = plmns
             core_gnb_relation = testing.Relation(
-                endpoint="fiveg_core_gnb", interface="fiveg_core_gnb"
+                endpoint="fiveg_core_gnb",
+                interface="fiveg_core_gnb",
+                local_app_data={"gnb-name": "gnbsim"},
             )
             n2_relation = testing.Relation(endpoint="fiveg-n2", interface="fiveg_n2")
             container = testing.Container(

@@ -121,6 +121,13 @@ class GNBSIMOperatorCharm(CharmBase):
         if not self._is_sd_present_in_plmn(plmns[0]):
             event.add_status(BlockedStatus("Invalid configuration: SD is missing from PLMN"))
             return
+        if not self._is_gnb_name_published():
+            event.add_status(
+                BlockedStatus(
+                    "Invalid configuration: gNB name needs to match the following regular expression: ^[a-zA-Z][a-zA-Z0-9-_]{1,255}$"  # noqa: E501
+                )
+            )
+            return
         event.add_status(ActiveStatus())
 
     def _configure(self, event: EventBase) -> None:  # noqa: C901
@@ -171,6 +178,8 @@ class GNBSIMOperatorCharm(CharmBase):
             return
         if not self._is_sd_present_in_plmn(plmns[0]):
             return
+        if not self._is_gnb_name_published():
+            return
         if not (ue_count := self._get_subscriber_count_from_config()):
             return
         content = self._render_config_file(
@@ -190,8 +199,15 @@ class GNBSIMOperatorCharm(CharmBase):
         self._write_config_file(content=content)
         self._create_upf_route()
 
-    def _is_sd_present_in_plmn(self, plmn) -> bool:
+    @staticmethod
+    def _is_sd_present_in_plmn(plmn) -> bool:
         return plmn.sd is not None
+
+    def _is_gnb_name_published(self) -> bool:
+        relation = self.model.get_relation(CORE_GNB_RELATION_NAME)
+        if not relation:
+            return False
+        return relation.data[self.app].get("gnb-name") is not None
 
     def _on_start_simulation_action(self, event: ActionEvent) -> None:
         """Run gnbsim simulation leveraging configuration file."""
