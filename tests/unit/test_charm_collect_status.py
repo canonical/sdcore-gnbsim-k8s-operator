@@ -254,6 +254,41 @@ class TestCharmCollectUnitStatus(GNBSUMUnitTestFixtures):
                 "Invalid configuration: SD is missing from PLMN"
             )
 
+    def test_given_no_gnb_name_in_fiveg_core_gnb_plmns_when_collect_unit_status_then_status_is_blocked(  # noqa: E501
+        self,
+    ):
+        self.mock_k8s_multus.multus_is_available.return_value = True
+        self.mock_k8s_multus.is_ready.return_value = True
+        self.mock_n2_requirer_amf_hostname.return_value = "amf"
+        self.mock_n2_requirer_amf_port.return_value = 1234
+        self.mock_gnb_core_remote_tac.return_value = 2
+        plmns = [PLMNConfig(mcc="001", mnc="01", sst=1, sd=3)]
+        self.mock_gnb_core_remote_plmns.return_value = plmns
+        n2_relation = testing.Relation(endpoint="fiveg-n2", interface="fiveg_n2")
+        core_gnb_relation = testing.Relation(
+            endpoint="fiveg_core_gnb",
+            interface="fiveg_core_gnb",
+        )
+        container = testing.Container(
+            name="gnbsim",
+            can_connect=True,
+            mounts={
+                "config": testing.Mount(
+                    location="/etc/gnbsim",
+                    source=tempfile.mkdtemp(),
+                )
+            },
+        )
+        state_in = testing.State(
+            leader=True, relations=[n2_relation, core_gnb_relation], containers=[container]
+        )
+
+        state_out = self.ctx.run(self.ctx.on.collect_unit_status(), state_in)
+
+        assert state_out.unit_status == BlockedStatus(
+                "Invalid configuration: gNB name is missing from the relation"
+            )
+
     def test_pre_requisites_met_when_collect_unit_status_then_status_is_active(self):
         self.mock_k8s_multus.multus_is_available.return_value = True
         self.mock_k8s_multus.is_ready.return_value = True
@@ -264,8 +299,10 @@ class TestCharmCollectUnitStatus(GNBSUMUnitTestFixtures):
         self.mock_gnb_core_remote_plmns.return_value = plmns
         n2_relation = testing.Relation(endpoint="fiveg-n2", interface="fiveg_n2")
         core_gnb_relation = testing.Relation(
-                endpoint="fiveg_core_gnb", interface="fiveg_core_gnb"
-            )
+            endpoint="fiveg_core_gnb",
+            interface="fiveg_core_gnb",
+            local_app_data={"gnb-name": "gnbsim"},
+        )
         container = testing.Container(
             name="gnbsim",
             can_connect=True,
