@@ -128,7 +128,7 @@ LIBAPI = 0
 
 # Increment this PATCH version before using `charmcraft publish-lib` or reset
 # to 0 if you are raising the major API version
-LIBPATCH = 1
+LIBPATCH = 2
 
 logger = logging.getLogger(__name__)
 
@@ -325,6 +325,7 @@ class FivegCoreGnbRequirerAppData(BaseModel):
         alias="gnb-name",
         description="CU/gNB unique identifier",
         examples=["gnb001"],
+        pattern="^[a-zA-Z][a-zA-Z0-9-_]{1,255}$"
     )
 
 
