@@ -164,8 +164,6 @@ class GNBSIMOperatorCharm(CharmBase):
             return
         if not (imsi := self._get_imsi_from_config()):
             return
-        if not (usim_sequence_number := self._get_usim_sequence_number_from_config()):
-            return
         if not (usim_opc := self._get_usim_opc_from_config()):
             return
         if not (usim_key := self._get_usim_key_from_config()):
@@ -188,7 +186,6 @@ class GNBSIMOperatorCharm(CharmBase):
             gnb_ip_address=gnb_ip_address.split("/")[0],
             icmp_packet_destination=icmp_packet_destination,
             imsi=imsi,
-            usim_sequence_number=usim_sequence_number,
             plmn=plmns[0],
             tac=tac,
             usim_opc=usim_opc,
@@ -322,9 +319,6 @@ class GNBSIMOperatorCharm(CharmBase):
     def _get_usim_opc_from_config(self) -> Optional[str]:
         return cast(Optional[str], self.model.config.get("usim-opc"))
 
-    def _get_usim_sequence_number_from_config(self) -> Optional[str]:
-        return cast(Optional[str], self.model.config.get("usim-sequence-number"))
-
     def _get_dnn_from_config(self) -> Optional[str]:
         return cast(Optional[str], self.model.config.get("dnn"))
 
@@ -368,7 +362,6 @@ class GNBSIMOperatorCharm(CharmBase):
         tac: int,
         usim_key: str,
         usim_opc: str,
-        usim_sequence_number: str,
         dnn: str,
         ue_count: int,
     ) -> str:
@@ -384,7 +377,6 @@ class GNBSIMOperatorCharm(CharmBase):
             tac: Tracking Area Code
             usim_key: USIM key
             usim_opc: USIM OPC
-            usim_sequence_number: USIM sequence number
             dnn: Data Network Name
             ue_count: Number of subscribers
 
@@ -406,7 +398,6 @@ class GNBSIMOperatorCharm(CharmBase):
             tac=format(tac, '06X'),
             usim_key=usim_key,
             usim_opc=usim_opc,
-            usim_sequence_number=usim_sequence_number,
             dnn=dnn,
             ue_count=ue_count,
         )
@@ -428,8 +419,6 @@ class GNBSIMOperatorCharm(CharmBase):
             invalid_configs.append("usim-key")
         if not self._get_usim_opc_from_config():
             invalid_configs.append("usim-opc")
-        if not self._get_usim_sequence_number_from_config():
-            invalid_configs.append("usim-sequence-number")
         return invalid_configs
 
     def _create_upf_route(self) -> None:
