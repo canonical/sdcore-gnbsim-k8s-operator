@@ -20,7 +20,6 @@ class TestCharmCollectUnitStatus(GNBSUMUnitTestFixtures):
             ("icmp-packet-destination"),
             ("imsi"),
             ("usim-key"),
-            ("usim-sequence-number"),
             ("upf-subnet"),
             ("upf-gateway"),
         ],
