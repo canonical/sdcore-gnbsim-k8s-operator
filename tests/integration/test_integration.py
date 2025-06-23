@@ -21,7 +21,7 @@ FIVEG_N2_MOCK_PATH = "./tests/integration/fiveg_n2_mock_charm.py"
 AMF_MOCK = "amf-mock"
 NMS_MOCK = "nms-mock"
 GRAFANA_AGENT_CHARM_NAME = "grafana-agent-k8s"
-GRAFANA_AGENT_CHARM_CHANNEL = "latest/stable"
+GRAFANA_AGENT_CHARM_CHANNEL = "1/stable"
 TIMEOUT = 5 * 60
 
 
