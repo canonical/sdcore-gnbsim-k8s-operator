@@ -275,7 +275,7 @@ class GNBSIMOperatorCharm(CharmBase):
         if (gnb_interface := self._get_gnb_interface_from_config()) is not None:
             gnb_nad_config.update({"type": "macvlan", "master": gnb_interface})
         else:
-            gnb_nad_config.update({"type": "bridge", "bridge": "ran-br"})
+            gnb_nad_config.update({"type": "bridge", "bridge": "access-br"})
         return [
             NetworkAttachmentDefinition(
                 metadata=ObjectMeta(name=GNB_NETWORK_ATTACHMENT_DEFINITION_NAME),
