@@ -112,7 +112,7 @@ LIBAPI = 0
 
 # Increment this PATCH version before using `charmcraft publish-lib` or reset
 # to 0 if you are raising the major API version
-LIBPATCH = 3
+LIBPATCH = 4
 
 logger = logging.getLogger(__name__)
 """Schemas definition for the provider and requirer sides of the `fiveg_n2` interface.
@@ -307,7 +307,7 @@ class N2Provides(Object):
             None
         """
         if not self.charm.unit.is_leader():
-            raise RuntimeError("Unit must be leader to set application relation data.")
+            return
         relations = self.model.relations[self.relation_name]
         if not relations:
             raise RuntimeError(f"Relation {self.relation_name} not created yet.")
