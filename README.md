@@ -1,7 +1,11 @@
 # SD-Core GNBSIM Operator (k8s)
 [![CharmHub Badge](https://charmhub.io/sdcore-gnbsim-k8s/badge.svg)](https://charmhub.io/sdcore-gnbsim-k8s)
 
-A Charmed Operator for SD-Core's gNodeB simulator (GNBSIM) component for K8s. 
+> **:warning: Deprecation Notice!**
+>
+> This project is deprecated and will not receive further updates. Please refer to the upstream [Aether](https://aetherproject.org/) project to continue using Aether.
+
+A Charmed Operator for SD-Core's gNodeB simulator (GNBSIM) component for K8s.
 
 ## Usage
 
